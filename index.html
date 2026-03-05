@@ -156,7 +156,7 @@
   // ── Google Sheets CSV ────────────────────────────────────────────────────
   const SHEET_ID  = "2PACX-1vSWifxu3DvL2DFP8e264yF5bM2TQalFc_zzEeeRshQr-XQZd3iRTb9D1RBSKMmdeVeyoTGhr2DHUkrG";
   const SHEET_GID = "1391417665";
-  const CSV_URL   = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?gid=${SHEET_GID}&single=true&output=csv`;
+  const CSV_URL   = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?gid=${SHEET_GID}&single=true&output=csv&t=${Date.now()}`;
   const PROXIES   = [
     u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
     u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
