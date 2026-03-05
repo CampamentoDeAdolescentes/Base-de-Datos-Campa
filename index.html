@@ -154,14 +154,7 @@
   const db  = getFirestore(app);
 
   // ── Google Sheets CSV ────────────────────────────────────────────────────
-  const SHEET_ID  = "2PACX-1vSWifxu3DvL2DFP8e264yF5bM2TQalFc_zzEeeRshQr-XQZd3iRTb9D1RBSKMmdeVeyoTGhr2DHUkrG";
-  const SHEET_GID = "1391417665";
-  const CSV_URL   = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?gid=${SHEET_GID}&single=true&output=csv&t=${Date.now()}`;
-  const PROXIES   = [
-    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-    u => `https://thingproxy.freeboard.io/fetch/${u}`,
-  ];
+  const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWifxu3DvL2DFP8e264yF5bM2TQalFc_zzEeeRshQr-XQZd3iRTb9D1RBSKMmdeVeyoTGhr2DHUkrG/pub?output=csv";
 
   // ── State ────────────────────────────────────────────────────────────────
   let sheetsRecords = [];
@@ -194,18 +187,17 @@
   // ── Fetch Sheets ─────────────────────────────────────────────────────────
   window.fetchSheets = async function() {
     setSyncStatus("loading","Sincronizando...");
-    for (const fn of PROXIES) {
-      try {
-        const res = await fetch(fn(CSV_URL));
-        if (!res.ok) continue;
-        const text = await res.text();
-        sheetsRecords = parseCSV(text);
-        const now = new Date().toLocaleTimeString("es-CR",{hour:"2-digit",minute:"2-digit"});
-        setSyncStatus("ok",`Actualizado ${now}`);
-        renderAll(); return;
-      } catch { /* siguiente proxy */ }
+    try {
+      const res = await fetch(CSV_URL + "&t=" + Date.now());
+      if (!res.ok) throw new Error("Error");
+      const text = await res.text();
+      sheetsRecords = parseCSV(text);
+      const now = new Date().toLocaleTimeString("es-CR",{hour:"2-digit",minute:"2-digit"});
+      setSyncStatus("ok",`Actualizado ${now}`);
+      renderAll();
+    } catch(e) {
+      setSyncStatus("error","Error de conexión");
     }
-    setSyncStatus("error","Error de conexión");
   };
 
   // ── Firebase: escuchar manuales en tiempo real ───────────────────────────
