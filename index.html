@@ -1,360 +1,334 @@
-import { useState, useEffect, useCallback } from "react";
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin · Campamento ORIGEN</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --orange: #ff4d00; --yellow: #ffba08;
+      --green: #4ade80; --red: #f87171;
+      --bg: #030303; --card: rgba(255,255,255,0.03); --border: rgba(255,255,255,0.07);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: #fff; font-family: 'Outfit', sans-serif; min-height: 100vh; padding: 24px 20px; }
+    .wrap { max-width: 900px; margin: 0 auto; }
 
-const SHEET_ID  = "2PACX-1vSWifxu3DvL2DFP8e264yF5bM2TQalFc_zzEeeRshQr-XQZd3iRTb9D1RBSKMmdeVeyoTGhr2DHUkrG";
-const SHEET_GID = "1391417665";
-const CSV_URL   = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?gid=${SHEET_GID}&single=true&output=csv`;
-const PROXIES   = [
-  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-  u => `https://thingproxy.freeboard.io/fetch/${u}`,
-];
-const INTERVAL = 30000;
+    .header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+    .label-sm { font-size: 11px; font-weight: 600; letter-spacing: .2em; color: var(--orange); text-transform: uppercase; }
+    h1 { font-family: 'Bangers', cursive; font-size: clamp(2rem,6vw,3.5rem); letter-spacing: 2px; line-height: 1; margin-top: 4px; }
+    .grad { background: linear-gradient(135deg,var(--orange),var(--yellow)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .sync-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+    .sync-dot { width:7px; height:7px; border-radius:50%; background:var(--green); flex-shrink:0; }
+    .sync-dot.error { background:var(--red); }
+    .sync-dot.loading { background:var(--yellow); animation:blink .8s infinite; }
+    .sync-label { font-size:11px; color:#6b7280; }
+    .btn-refresh { background:none; border:none; color:var(--orange); cursor:pointer; font-size:11px; font-weight:600; font-family:inherit; margin-left:4px; }
+    .btn-add { background:linear-gradient(to right,var(--orange),#e64400); border:none; border-radius:12px; padding:12px 22px; color:#fff; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; box-shadow:0 8px 24px rgba(255,77,0,.3); white-space:nowrap; }
 
-function parseCSVLine(line) {
-  const res = []; let cur = ""; let inQ = false;
-  for (const ch of line) {
-    if (ch === '"') { inQ = !inQ; }
-    else if (ch === ',' && !inQ) { res.push(cur.trim()); cur = ""; }
-    else cur += ch;
-  }
-  res.push(cur.trim());
-  return res;
-}
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:24px; }
+    .stat-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 20px; }
+    .stat-label { font-size:10px; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.15em; }
+    .stat-value { font-size:clamp(1.6rem,4vw,2.2rem); font-weight:800; line-height:1; margin-top:4px; }
 
-function parseCSV(text) {
-  const lines = text.trim().split("\n").filter(l => l.trim());
-  if (lines.length < 2) return [];
-  return lines.slice(1).map((line, i) => {
-    const c = parseCSVLine(line);
-    const raw = (c[4] || "").toLowerCase();
-    const asiste = raw.includes("sí") || raw.includes("si") || raw === "true";
-    return { id: `s${i}`, src: "sheets", ts: c[0]||"", nombre: c[1]||"", edad: c[2]||"", telefono: c[3]||"", asiste, razon: c[5]||"" };
-  });
-}
+    .filters { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+    .search-input { flex:1; min-width:200px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:10px 16px; color:#fff; font-size:14px; outline:none; font-family:inherit; }
+    .search-input::placeholder { color:#4b5563; }
+    .filter-btn { padding:10px 18px; border-radius:10px; border:1px solid rgba(255,255,255,.1); background:transparent; color:#9ca3af; cursor:pointer; font-weight:600; font-size:13px; font-family:inherit; }
+    .filter-btn.active { border-color:var(--orange); background:rgba(255,77,0,.1); color:var(--orange); }
 
-function Badge({ asiste }) {
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 5,
-      padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700,
-      background: asiste ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
-      color: asiste ? "#4ade80" : "#f87171",
-      border: `1px solid ${asiste ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)"}`,
-      letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap"
-    }}>
-      <span style={{ width: 6, height: 6, borderRadius: "50%", background: asiste ? "#4ade80" : "#f87171", flexShrink: 0 }} />
-      {asiste ? "Asiste" : "No asiste"}
-    </span>
-  );
-}
+    .list { display:flex; flex-direction:column; gap:8px; }
+    .record-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 20px; display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; animation:fadeIn .3s ease both; }
+    .record-left { display:flex; align-items:center; gap:14px; flex-wrap:wrap; min-width:0; }
+    .avatar { width:40px; height:40px; border-radius:50%; flex-shrink:0; background:linear-gradient(135deg,var(--orange),var(--yellow)); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; color:#fff; }
+    .avatar.manual { background:linear-gradient(135deg,#6366f1,#8b5cf6); }
+    .record-name { font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .record-meta { font-size:12px; color:#6b7280; margin-top:2px; }
+    .badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; white-space:nowrap; }
+    .badge.yes { background:rgba(34,197,94,.12); color:var(--green); border:1px solid rgba(74,222,128,.3); }
+    .badge.no  { background:rgba(239,68,68,.12);  color:var(--red);   border:1px solid rgba(248,113,113,.3); }
+    .badge-dot { width:6px; height:6px; border-radius:50%; }
+    .manual-tag { font-size:9px; padding:2px 7px; border-radius:999px; background:rgba(99,102,241,.15); color:#a5b4fc; border:1px solid rgba(165,180,252,.2); font-weight:700; letter-spacing:.1em; }
+    .btn-edit { padding:8px 14px; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:transparent; color:#9ca3af; cursor:pointer; font-size:12px; font-family:inherit; font-weight:600; }
+    .empty { text-align:center; color:#6b7280; padding:60px 20px; font-size:14px; }
 
-function Modal({ record, onClose, onSave }) {
-  const [form, setForm] = useState(
-    record || { nombre: "", edad: "", telefono: "", asiste: true, razon: "" }
-  );
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.85); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; z-index:100; padding:20px; }
+    .modal-box { background:#111; border:1px solid rgba(255,255,255,.1); border-radius:20px; padding:32px; width:100%; max-width:460px; box-shadow:0 40px 80px rgba(0,0,0,.6); }
+    .modal-title { font-family:'Bangers',cursive; font-size:28px; letter-spacing:2px; color:var(--orange); margin-bottom:24px; }
+    .form-group { display:flex; flex-direction:column; gap:16px; }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    label { font-size:11px; font-weight:600; color:#9ca3af; letter-spacing:.1em; text-transform:uppercase; display:block; margin-bottom:6px; }
+    input, textarea { width:100%; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:8px; padding:10px 14px; color:#fff; font-size:14px; outline:none; font-family:inherit; }
+    input:focus, textarea:focus { border-color:rgba(255,77,0,.4); }
+    textarea { resize:vertical; min-height:80px; }
+    .asiste-btns { display:flex; gap:10px; }
+    .asiste-btn { flex:1; padding:10px; border-radius:8px; cursor:pointer; font-weight:700; font-size:13px; font-family:inherit; border:1px solid rgba(255,255,255,.1); background:transparent; color:#6b7280; }
+    .asiste-btn.active-yes { border-color:var(--green); background:rgba(74,222,128,.1); color:var(--green); }
+    .asiste-btn.active-no  { border-color:var(--red);   background:rgba(248,113,113,.1); color:var(--red); }
+    .modal-actions { display:flex; gap:10px; margin-top:24px; }
+    .btn-cancel { flex:1; padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,.1); background:transparent; color:#9ca3af; cursor:pointer; font-weight:600; font-family:inherit; }
+    .btn-save { flex:2; padding:12px; border-radius:10px; border:none; background:linear-gradient(to right,var(--orange),#e64400); color:#fff; cursor:pointer; font-weight:700; font-size:14px; font-family:inherit; box-shadow:0 8px 20px rgba(255,77,0,.3); }
 
-  const handleSave = () => {
-    if (!form.nombre || !form.edad || !form.telefono) return alert("Completa nombre, edad y teléfono.");
-    onSave(form);
-  };
-
-  const inputStyle = {
-    width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 8, padding: "10px 14px", color: "#fff", fontSize: 14, outline: "none", fontFamily: "inherit"
-  };
-  const labelStyle = {
-    fontSize: 11, fontWeight: 600, color: "#9ca3af", letterSpacing: "0.1em",
-    textTransform: "uppercase", marginBottom: 6, display: "block"
-  };
-
-  return (
-    <div style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)",
-      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20
-    }}>
-      <div style={{
-        background: "#111", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20,
-        padding: 32, width: "100%", maxWidth: 460, boxShadow: "0 40px 80px rgba(0,0,0,0.6)"
-      }}>
-        <h2 style={{ fontFamily: "'Bangers', cursive", fontSize: 28, letterSpacing: 2, color: "#ff4d00", margin: "0 0 24px" }}>
-          {record?.id ? "Editar Registro" : "Nuevo Registro"}
-        </h2>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div>
-            <label style={labelStyle}>Nombre completo</label>
-            <input style={inputStyle} value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} placeholder="Ej: María González" />
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={labelStyle}>Edad</label>
-              <input style={inputStyle} value={form.edad} onChange={e => setForm({ ...form, edad: e.target.value })} placeholder="16" />
-            </div>
-            <div>
-              <label style={labelStyle}>Teléfono</label>
-              <input style={inputStyle} value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })} placeholder="8888-1234" />
-            </div>
-          </div>
-          <div>
-            <label style={labelStyle}>¿Puede asistir?</label>
-            <div style={{ display: "flex", gap: 10 }}>
-              {[true, false].map(val => (
-                <button key={String(val)} onClick={() => setForm({ ...form, asiste: val, razon: val ? "" : form.razon })}
-                  style={{
-                    flex: 1, padding: "10px", borderRadius: 8,
-                    border: `1px solid ${form.asiste === val ? (val ? "#4ade80" : "#f87171") : "rgba(255,255,255,0.1)"}`,
-                    background: form.asiste === val ? (val ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)") : "transparent",
-                    color: form.asiste === val ? (val ? "#4ade80" : "#f87171") : "#6b7280",
-                    cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit"
-                  }}>
-                  {val ? "✓ Sí" : "✗ No"}
-                </button>
-              ))}
-            </div>
-          </div>
-          {!form.asiste && (
-            <div>
-              <label style={labelStyle}>¿Por qué no puede asistir?</label>
-              <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 80 }}
-                value={form.razon} onChange={e => setForm({ ...form, razon: e.target.value })}
-                placeholder="Escribe el motivo..." />
-            </div>
-          )}
-        </div>
-        <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-          <button onClick={onClose} style={{
-            flex: 1, padding: "12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)",
-            background: "transparent", color: "#9ca3af", cursor: "pointer", fontWeight: 600, fontFamily: "inherit"
-          }}>Cancelar</button>
-          <button onClick={handleSave} style={{
-            flex: 2, padding: "12px", borderRadius: 10, border: "none",
-            background: "linear-gradient(to right, #ff4d00, #e64400)",
-            color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: 14, fontFamily: "inherit",
-            boxShadow: "0 8px 20px rgba(255,77,0,0.3)"
-          }}>Guardar</button>
-        </div>
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+    @keyframes blink  { 0%,100%{ opacity:1; } 50%{ opacity:.2; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <p class="label-sm">Panel de Control</p>
+      <h1><span class="grad">CAMPAMENTO</span> <span>ORIGEN</span></h1>
+      <div class="sync-row">
+        <span class="sync-dot loading" id="syncDot"></span>
+        <span class="sync-label" id="syncLabel">Conectando...</span>
+        <button class="btn-refresh" onclick="fetchSheets()">↻ Actualizar</button>
       </div>
     </div>
-  );
-}
+    <button class="btn-add" onclick="openModal()">+ Agregar manual</button>
+  </div>
 
-export default function App() {
-  const [sheetsData, setSheetsData]   = useState([]);
-  const [manualData, setManualData]   = useState([]);
-  const [modal, setModal]             = useState(null);
-  const [search, setSearch]           = useState("");
-  const [filter, setFilter]           = useState("todos");
-  const [loading, setLoading]         = useState(true);
-  const [lastSync, setLastSync]       = useState(null);
-  const [syncStatus, setSyncStatus]   = useState("loading");
+  <div class="stats">
+    <div class="stat-card"><div class="stat-label">Total inscritos</div><div class="stat-value" id="statTotal">0</div></div>
+    <div class="stat-card"><div class="stat-label">Asisten</div><div class="stat-value" style="color:var(--green)" id="statYes">0</div></div>
+    <div class="stat-card"><div class="stat-label">No asisten</div><div class="stat-value" style="color:var(--red)" id="statNo">0</div></div>
+  </div>
 
-  // Cargar manuales del storage persistente
-  useEffect(() => {
-    const loadManual = async () => {
-      try {
-        const result = await window.storage.get("campManual", true);
-        if (result) setManualData(JSON.parse(result.value));
-      } catch { /* sin datos previos */ }
-    };
-    loadManual();
-  }, []);
+  <div class="filters">
+    <input class="search-input" id="searchInput" placeholder="🔍  Buscar por nombre o teléfono..." oninput="renderList()" />
+    <button class="filter-btn active" data-filter="todos"     onclick="setFilter(this)">Todos</button>
+    <button class="filter-btn"        data-filter="asiste"    onclick="setFilter(this)">✓ Asisten</button>
+    <button class="filter-btn"        data-filter="no-asiste" onclick="setFilter(this)">✗ No asisten</button>
+  </div>
 
-  // Guardar manuales cuando cambian
-  useEffect(() => {
-    if (manualData.length === 0) return;
-    window.storage.set("campManual", JSON.stringify(manualData), true).catch(console.error);
-  }, [manualData]);
+  <div class="list" id="recordList"></div>
+</div>
 
-  const fetchSheets = useCallback(async () => {
-    setSyncStatus("loading");
-    for (const proxyFn of PROXIES) {
-      try {
-        const res = await fetch(proxyFn(CSV_URL));
-        if (!res.ok) continue;
-        const text = await res.text();
-        setSheetsData(parseCSV(text));
-        setLastSync(new Date());
-        setSyncStatus("ok");
-        setLoading(false);
-        return;
-      } catch { /* probar siguiente */ }
-    }
-    setSyncStatus("error");
-    setLoading(false);
-  }, []);
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle">Nuevo Registro</div>
+    <div class="form-group">
+      <div><label>Nombre completo</label><input id="fNombre" placeholder="Ej: María González" /></div>
+      <div class="form-row">
+        <div><label>Edad</label><input id="fEdad" type="number" placeholder="16" /></div>
+        <div><label>Teléfono</label><input id="fTelefono" placeholder="8888-1234" /></div>
+      </div>
+      <div>
+        <label>¿Puede asistir?</label>
+        <div class="asiste-btns">
+          <button class="asiste-btn active-yes" id="btnSi" onclick="setAsiste(true)">✓ Sí</button>
+          <button class="asiste-btn"            id="btnNo" onclick="setAsiste(false)">✗ No</button>
+        </div>
+      </div>
+      <div id="razonGroup" style="display:none">
+        <label>¿Por qué no puede asistir?</label>
+        <textarea id="fRazon" placeholder="Escribe el motivo..."></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save"   onclick="saveRecord()">Guardar</button>
+    </div>
+  </div>
+</div>
 
-  useEffect(() => { fetchSheets(); }, [fetchSheets]);
-  useEffect(() => {
-    const t = setInterval(fetchSheets, INTERVAL);
-    return () => clearInterval(t);
-  }, [fetchSheets]);
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp }                          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, getDocs,
+           addDoc, updateDoc, doc, onSnapshot }     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  const allRecords = [...sheetsData, ...manualData];
-
-  const handleSave = (form) => {
-    if (form.id && form.src === "manual") {
-      setManualData(d => d.map(x => x.id === form.id ? form : x));
-    } else {
-      setManualData(d => [...d, { ...form, id: `m${Date.now()}`, src: "manual", ts: "" }]);
-    }
-    setModal(null);
+  // ── Firebase config ──────────────────────────────────────────────────────
+  const firebaseConfig = {
+    apiKey:            "AIzaSyB1bi152SLB7xENKSSc4-rrma0n5Ny2Is0",
+    authDomain:        "base-de-datos-campa.firebaseapp.com",
+    projectId:         "base-de-datos-campa",
+    storageBucket:     "base-de-datos-campa.firebasestorage.app",
+    messagingSenderId: "55044154081",
+    appId:             "1:55044154081:web:627dab5a33507d13b4cda0",
   };
 
-  const filtered = allRecords.filter(r => {
-    const matchSearch = r.nombre.toLowerCase().includes(search.toLowerCase()) || r.telefono.includes(search);
-    const matchFilter = filter === "todos" || (filter === "asiste" ? r.asiste : !r.asiste);
-    return matchSearch && matchFilter;
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  // ── Google Sheets CSV ────────────────────────────────────────────────────
+  const SHEET_ID  = "2PACX-1vSWifxu3DvL2DFP8e264yF5bM2TQalFc_zzEeeRshQr-XQZd3iRTb9D1RBSKMmdeVeyoTGhr2DHUkrG";
+  const SHEET_GID = "1391417665";
+  const CSV_URL   = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?gid=${SHEET_GID}&single=true&output=csv`;
+  const PROXIES   = [
+    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+    u => `https://thingproxy.freeboard.io/fetch/${u}`,
+  ];
+
+  // ── State ────────────────────────────────────────────────────────────────
+  let sheetsRecords = [];
+  let manualRecords = [];
+  let currentFilter = "todos";
+  let editingId     = null;
+  let asisteVal     = true;
+
+  // ── CSV parser ───────────────────────────────────────────────────────────
+  function parseCSVLine(line) {
+    const res=[]; let cur=""; let inQ=false;
+    for (const ch of line) {
+      if (ch==='"') inQ=!inQ;
+      else if (ch===',' && !inQ) { res.push(cur.trim()); cur=""; }
+      else cur+=ch;
+    }
+    res.push(cur.trim()); return res;
+  }
+  function parseCSV(text) {
+    const lines = text.trim().split("\n").filter(l=>l.trim());
+    if (lines.length < 2) return [];
+    return lines.slice(1).map((line,i) => {
+      const c = parseCSVLine(line);
+      const raw = (c[4]||"").toLowerCase();
+      const asiste = raw.includes("sí")||raw.includes("si")||raw==="true";
+      return { id:`s${i}`, src:"sheets", ts:c[0]||"", nombre:c[1]||"", edad:c[2]||"", telefono:c[3]||"", asiste, razon:c[5]||"" };
+    });
+  }
+
+  // ── Fetch Sheets ─────────────────────────────────────────────────────────
+  window.fetchSheets = async function() {
+    setSyncStatus("loading","Sincronizando...");
+    for (const fn of PROXIES) {
+      try {
+        const res = await fetch(fn(CSV_URL));
+        if (!res.ok) continue;
+        const text = await res.text();
+        sheetsRecords = parseCSV(text);
+        const now = new Date().toLocaleTimeString("es-CR",{hour:"2-digit",minute:"2-digit"});
+        setSyncStatus("ok",`Actualizado ${now}`);
+        renderAll(); return;
+      } catch { /* siguiente proxy */ }
+    }
+    setSyncStatus("error","Error de conexión");
+  };
+
+  // ── Firebase: escuchar manuales en tiempo real ───────────────────────────
+  onSnapshot(collection(db,"manuales"), snapshot => {
+    manualRecords = snapshot.docs.map(d => ({ id: d.id, src:"manual", ...d.data() }));
+    renderAll();
   });
 
-  const totalAsiste = allRecords.filter(r => r.asiste).length;
-  const totalNo     = allRecords.filter(r => !r.asiste).length;
+  // ── Render ───────────────────────────────────────────────────────────────
+  function setSyncStatus(state, label) {
+    const dot = document.getElementById("syncDot");
+    dot.className = "sync-dot" + (state==="loading"?" loading":state==="error"?" error":"");
+    document.getElementById("syncLabel").textContent = label;
+  }
 
-  const syncColor = syncStatus === "ok" ? "#4ade80" : syncStatus === "error" ? "#f87171" : "#ffba08";
-  const syncLabel = syncStatus === "loading" ? "Sincronizando..."
-    : syncStatus === "error" ? "Error de conexión"
-    : lastSync ? `Actualizado ${lastSync.toLocaleTimeString("es-CR", { hour: "2-digit", minute: "2-digit" })}` : "";
+  function renderAll() {
+    const all = [...sheetsRecords, ...manualRecords];
+    document.getElementById("statTotal").textContent = all.length;
+    document.getElementById("statYes").textContent   = all.filter(r=>r.asiste).length;
+    document.getElementById("statNo").textContent    = all.filter(r=>!r.asiste).length;
+    renderList();
+  }
 
-  return (
-    <>
-      <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
-      <div style={{ minHeight: "100vh", background: "#030303", color: "#fff", fontFamily: "'Outfit', sans-serif", padding: "24px 20px" }}>
+  function renderList() {
+    const search = document.getElementById("searchInput").value.toLowerCase();
+    const all    = [...sheetsRecords, ...manualRecords];
+    const list   = document.getElementById("recordList");
 
-        {/* HEADER */}
-        <div style={{ maxWidth: 900, margin: "0 auto 32px" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
-            <div>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 600, letterSpacing: "0.2em", color: "#ff4d00", textTransform: "uppercase" }}>Panel de Control</p>
-              <h1 style={{ fontFamily: "'Bangers', cursive", fontSize: "clamp(2.2rem,6vw,3.5rem)", margin: "4px 0 0", letterSpacing: 2, lineHeight: 1 }}>
-                <span style={{ background: "linear-gradient(135deg,#ff4d00,#ffba08)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>CAMPAMENTO</span>
-                {" "}<span style={{ color: "#fff" }}>ORIGEN</span>
-              </h1>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8 }}>
-                <span style={{
-                  width: 7, height: 7, borderRadius: "50%", background: syncColor, flexShrink: 0,
-                  animation: syncStatus === "loading" ? "blink .8s infinite" : "none"
-                }} />
-                <span style={{ fontSize: 11, color: "#6b7280" }}>{syncLabel}</span>
-                <button onClick={fetchSheets} style={{
-                  marginLeft: 4, background: "none", border: "none", color: "#ff4d00",
-                  cursor: "pointer", fontSize: 11, fontWeight: 600, fontFamily: "inherit", padding: 0
-                }}>↻ Actualizar</button>
-              </div>
+    const filtered = all.filter(r => {
+      const ms = r.nombre.toLowerCase().includes(search) || r.telefono.includes(search);
+      const mf = currentFilter==="todos"||(currentFilter==="asiste"?r.asiste:!r.asiste);
+      return ms && mf;
+    });
+
+    if (!filtered.length) {
+      list.innerHTML = `<div class="empty">${all.length===0?"Aún no hay inscripciones.":"No hay registros que coincidan."}</div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map((r,i) => `
+      <div class="record-card" style="animation-delay:${i*.03}s">
+        <div class="record-left">
+          <div class="avatar ${r.src==="manual"?"manual":""}">${r.nombre?r.nombre.charAt(0).toUpperCase():"?"}</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <div class="record-name">${esc(r.nombre)}</div>
+              ${r.src==="manual"?'<span class="manual-tag">MANUAL</span>':""}
             </div>
-            <button onClick={() => setModal("new")} style={{
-              background: "linear-gradient(to right,#ff4d00,#e64400)", border: "none", borderRadius: 12,
-              padding: "12px 22px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer",
-              fontFamily: "inherit", boxShadow: "0 8px 24px rgba(255,77,0,.3)", whiteSpace: "nowrap"
-            }}>+ Agregar manual</button>
-          </div>
-
-          {/* STATS */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginTop: 24 }}>
-            {[
-              { label: "Total inscritos", value: allRecords.length, color: "#fff" },
-              { label: "Asisten",         value: totalAsiste,       color: "#4ade80" },
-              { label: "No asisten",      value: totalNo,           color: "#f87171" },
-            ].map(s => (
-              <div key={s.label} style={{ background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.07)", borderRadius: 14, padding: "16px 20px" }}>
-                <p style={{ margin: 0, fontSize: 10, color: "#6b7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".15em" }}>{s.label}</p>
-                <p style={{ margin: "4px 0 0", fontSize: "clamp(1.6rem,4vw,2.2rem)", fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* FILTERS */}
-        <div style={{ maxWidth: 900, margin: "0 auto 20px", display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="🔍  Buscar por nombre o teléfono..."
-            style={{
-              flex: 1, minWidth: 200, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.1)",
-              borderRadius: 10, padding: "10px 16px", color: "#fff", fontSize: 14, outline: "none", fontFamily: "inherit"
-            }} />
-          {["todos","asiste","no-asiste"].map(f => (
-            <button key={f} onClick={() => setFilter(f)} style={{
-              padding: "10px 18px", borderRadius: 10,
-              border: `1px solid ${filter === f ? "#ff4d00" : "rgba(255,255,255,.1)"}`,
-              background: filter === f ? "rgba(255,77,0,.1)" : "transparent",
-              color: filter === f ? "#ff4d00" : "#9ca3af",
-              cursor: "pointer", fontWeight: 600, fontSize: 13, fontFamily: "inherit"
-            }}>
-              {f === "todos" ? "Todos" : f === "asiste" ? "✓ Asisten" : "✗ No asisten"}
-            </button>
-          ))}
-        </div>
-
-        {/* LIST */}
-        <div style={{ maxWidth: 900, margin: "0 auto" }}>
-          {loading ? (
-            <p style={{ textAlign: "center", color: "#6b7280", padding: 60 }}>Cargando inscripciones...</p>
-          ) : filtered.length === 0 ? (
-            <p style={{ textAlign: "center", color: "#6b7280", padding: 40 }}>
-              {allRecords.length === 0 ? "Aún no hay inscripciones." : "No hay registros que coincidan."}
-            </p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {filtered.map((r, i) => (
-                <div key={r.id} style={{
-                  background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.07)",
-                  borderRadius: 14, padding: "16px 20px",
-                  display: "grid", gridTemplateColumns: "1fr auto", gap: 12, alignItems: "center",
-                  animation: `fadeIn .3s ease ${i * .03}s both`
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", minWidth: 0 }}>
-                    <div style={{
-                      width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
-                      background: r.src === "manual"
-                        ? "linear-gradient(135deg,#6366f1,#8b5cf6)"
-                        : "linear-gradient(135deg,#ff4d00,#ffba08)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontWeight: 800, fontSize: 16, color: "#fff"
-                    }}>
-                      {r.nombre ? r.nombre.charAt(0).toUpperCase() : "?"}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.nombre}</p>
-                        {r.src === "manual" && (
-                          <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 999, background: "rgba(99,102,241,.15)", color: "#a5b4fc", border: "1px solid rgba(165,180,252,.2)", fontWeight: 700, letterSpacing: ".1em" }}>MANUAL</span>
-                        )}
-                      </div>
-                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>
-                        {r.edad && <>{r.edad} años &nbsp;·&nbsp; </>}{r.telefono}
-                        {r.ts && <span style={{ color: "#4b5563" }}> &nbsp;·&nbsp; {r.ts}</span>}
-                        {!r.asiste && r.razon && <span style={{ color: "#f87171" }}> &nbsp;·&nbsp; {r.razon}</span>}
-                      </p>
-                    </div>
-                    <Badge asiste={r.asiste} />
-                  </div>
-
-                  {/* Solo editar para manuales */}
-                  {r.src === "manual" && (
-                    <button onClick={() => setModal(r)} style={{
-                      padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,.1)",
-                      background: "transparent", color: "#9ca3af", cursor: "pointer", fontSize: 12,
-                      fontFamily: "inherit", fontWeight: 600
-                    }}>Editar</button>
-                  )}
-                </div>
-              ))}
+            <div class="record-meta">
+              ${r.edad?r.edad+" años &nbsp;·&nbsp; ":""}${esc(r.telefono)}
+              ${r.ts?`<span style="color:#4b5563"> &nbsp;·&nbsp; ${esc(r.ts)}</span>`:""}
+              ${!r.asiste&&r.razon?`<span style="color:var(--red)"> &nbsp;·&nbsp; ${esc(r.razon)}</span>`:""}
             </div>
-          )}
+          </div>
+          <span class="badge ${r.asiste?"yes":"no"}">
+            <span class="badge-dot" style="background:${r.asiste?"var(--green)":"var(--red)"}"></span>
+            ${r.asiste?"Asiste":"No asiste"}
+          </span>
         </div>
-
-        {modal && (
-          <Modal
-            record={modal === "new" ? null : modal}
-            onClose={() => setModal(null)}
-            onSave={handleSave}
-          />
-        )}
-
-        <style>{`
-          @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
-          @keyframes blink  { 0%,100% { opacity:1; } 50% { opacity:.2; } }
-          input::placeholder { color: #4b5563; }
-          input:focus, textarea:focus { border-color: rgba(255,77,0,.4) !important; }
-        `}</style>
+        ${r.src==="manual"?`<button class="btn-edit" onclick="openModal('${r.id}')">Editar</button>`:""}
       </div>
-    </>
-  );
-}
+    `).join("");
+  }
+
+  function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+  // ── Filter ───────────────────────────────────────────────────────────────
+  window.setFilter = function(btn) {
+    document.querySelectorAll(".filter-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    currentFilter = btn.dataset.filter;
+    renderList();
+  };
+
+  // ── Modal ────────────────────────────────────────────────────────────────
+  window.openModal = function(id) {
+    editingId = id || null;
+    asisteVal = true;
+    document.getElementById("modalTitle").textContent = id ? "Editar Registro" : "Nuevo Registro";
+    if (id) {
+      const r = manualRecords.find(x=>x.id===id);
+      if (r) {
+        document.getElementById("fNombre").value   = r.nombre;
+        document.getElementById("fEdad").value     = r.edad;
+        document.getElementById("fTelefono").value = r.telefono;
+        document.getElementById("fRazon").value    = r.razon||"";
+        asisteVal = r.asiste;
+      }
+    } else {
+      ["fNombre","fEdad","fTelefono","fRazon"].forEach(id=>document.getElementById(id).value="");
+    }
+    updateAsisteUI();
+    document.getElementById("modal").style.display = "flex";
+  };
+
+  window.closeModal = function() { document.getElementById("modal").style.display="none"; };
+
+  window.setAsiste = function(val) { asisteVal=val; updateAsisteUI(); };
+
+  function updateAsisteUI() {
+    document.getElementById("btnSi").className = "asiste-btn"+(asisteVal?" active-yes":"");
+    document.getElementById("btnNo").className = "asiste-btn"+(!asisteVal?" active-no":"");
+    document.getElementById("razonGroup").style.display = asisteVal?"none":"block";
+  }
+
+  window.saveRecord = async function() {
+    const nombre   = document.getElementById("fNombre").value.trim();
+    const edad     = document.getElementById("fEdad").value.trim();
+    const telefono = document.getElementById("fTelefono").value.trim();
+    const razon    = document.getElementById("fRazon").value.trim();
+    if (!nombre||!edad||!telefono) return alert("Completa nombre, edad y teléfono.");
+
+    if (editingId) {
+      await updateDoc(doc(db,"manuales",editingId), { nombre, edad, telefono, asiste:asisteVal, razon });
+    } else {
+      await addDoc(collection(db,"manuales"), { nombre, edad, telefono, asiste:asisteVal, razon, ts:"" });
+    }
+    closeModal();
+  };
+
+  // ── Init ─────────────────────────────────────────────────────────────────
+  fetchSheets();
+  setInterval(fetchSheets, 30000);
+</script>
+</body>
+</html>
