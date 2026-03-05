@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin · Campamento ORIGEN</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --orange: #ff4d00;
+      --yellow: #ffba08;
+      --green: #4ade80;
+      --red: #f87171;
+      --bg: #030303;
+      --card: rgba(255,255,255,0.03);
+      --border: rgba(255,255,255,0.07);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      padding: 24px 20px;
+    }
+    .wrap { max-width: 900px; margin: 0 auto; }
+
+    /* HEADER */
+    .header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+    .header-left p { font-size: 11px; font-weight: 600; letter-spacing: .2em; color: var(--orange); text-transform: uppercase; }
+    .header-left h1 { font-family: 'Bangers', cursive; font-size: clamp(2rem,6vw,3.5rem); letter-spacing: 2px; line-height: 1; margin-top: 4px; }
+    .grad { background: linear-gradient(135deg, var(--orange), var(--yellow)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .sync-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+    .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+    .sync-dot.error { background: var(--red); }
+    .sync-dot.loading { background: var(--yellow); animation: blink .8s infinite; }
+    .sync-label { font-size: 11px; color: #6b7280; }
+    .btn-refresh { background: none; border: none; color: var(--orange); cursor: pointer; font-size: 11px; font-weight: 600; font-family: inherit; margin-left: 4px; }
+    .btn-add {
+      background: linear-gradient(to right, var(--orange), #e64400);
+      border: none; border-radius: 12px; padding: 12px 22px;
+      color: #fff; font-weight: 700; font-size: 14px; cursor: pointer;
+      font-family: inherit; box-shadow: 0 8px 24px rgba(255,77,0,.3);
+      white-space: nowrap;
+    }
+
+    /* STATS */
+    .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 24px; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 20px; }
+    .stat-label { font-size: 10px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: .15em; }
+    .stat-value { font-size: clamp(1.6rem,4vw,2.2rem); font-weight: 800; line-height: 1; margin-top: 4px; }
+
+    /* FILTERS */
+    .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .search-input {
+      flex: 1; min-width: 200px;
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 10px; padding: 10px 16px; color: #fff; font-size: 14px;
+      outline: none; font-family: inherit;
+    }
+    .search-input::placeholder { color: #4b5563; }
+    .filter-btn {
+      padding: 10px 18px; border-radius: 10px; border: 1px solid rgba(255,255,255,.1);
+      background: transparent; color: #9ca3af; cursor: pointer; font-weight: 600;
+      font-size: 13px; font-family: inherit; transition: all .2s;
+    }
+    .filter-btn.active { border-color: var(--orange); background: rgba(255,77,0,.1); color: var(--orange); }
+
+    /* LIST */
+    .list { display: flex; flex-direction: column; gap: 8px; }
+    .record-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px 20px;
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 12px; align-items: center;
+      animation: fadeIn .3s ease both;
+    }
+    .record-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; }
+    .avatar {
+      width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--orange), var(--yellow));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 16px; color: #fff;
+    }
+    .avatar.manual { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+    .record-name { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .record-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .record-meta .reason { color: var(--red); }
+    .record-meta .ts { color: #4b5563; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;
+      letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;
+    }
+    .badge.yes { background: rgba(34,197,94,.12); color: var(--green); border: 1px solid rgba(74,222,128,.3); }
+    .badge.no  { background: rgba(239,68,68,.12);  color: var(--red);   border: 1px solid rgba(248,113,113,.3); }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .manual-tag {
+      font-size: 9px; padding: 2px 7px; border-radius: 999px;
+      background: rgba(99,102,241,.15); color: #a5b4fc;
+      border: 1px solid rgba(165,180,252,.2); font-weight: 700; letter-spacing: .1em;
+    }
+    .record-actions { display: flex; gap: 8px; }
+    .btn-edit {
+      padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,.1);
+      background: transparent; color: #9ca3af; cursor: pointer; font-size: 12px;
+      font-family: inherit; font-weight: 600;
+    }
+    .btn-delete {
+      padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(248,113,113,.2);
+      background: rgba(248,113,113,.07); color: var(--red); cursor: pointer; font-size: 12px;
+      font-family: inherit; font-weight: 600;
+    }
+
+    /* EMPTY */
+    .empty { text-align: center; color: #6b7280; padding: 60px 20px; font-size: 14px; }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.85);
+      backdrop-filter: blur(8px); display: flex; align-items: center;
+      justify-content: center; z-index: 100; padding: 20px;
+    }
+    .modal-box {
+      background: #111; border: 1px solid rgba(255,255,255,.1); border-radius: 20px;
+      padding: 32px; width: 100%; max-width: 460px;
+      box-shadow: 0 40px 80px rgba(0,0,0,.6);
+    }
+    .modal-title { font-family: 'Bangers', cursive; font-size: 28px; letter-spacing: 2px; color: var(--orange); margin-bottom: 24px; }
+    .form-group { display: flex; flex-direction: column; gap: 16px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label { font-size: 11px; font-weight: 600; color: #9ca3af; letter-spacing: .1em; text-transform: uppercase; display: block; margin-bottom: 6px; }
+    input, textarea, select {
+      width: 100%; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 14px;
+      outline: none; font-family: inherit;
+    }
+    input:focus, textarea:focus { border-color: rgba(255,77,0,.4); }
+    textarea { resize: vertical; min-height: 80px; }
+    .asiste-btns { display: flex; gap: 10px; }
+    .asiste-btn {
+      flex: 1; padding: 10px; border-radius: 8px; cursor: pointer;
+      font-weight: 700; font-size: 13px; font-family: inherit;
+      border: 1px solid rgba(255,255,255,.1); background: transparent; color: #6b7280;
+      transition: all .2s;
+    }
+    .asiste-btn.active-yes { border-color: var(--green); background: rgba(74,222,128,.1); color: var(--green); }
+    .asiste-btn.active-no  { border-color: var(--red);   background: rgba(248,113,113,.1); color: var(--red); }
+    .modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+    .btn-cancel {
+      flex: 1; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.1);
+      background: transparent; color: #9ca3af; cursor: pointer; font-weight: 600; font-family: inherit;
+    }
+    .btn-save {
+      flex: 2; padding: 12px; border-radius: 10px; border: none;
+      background: linear-gradient(to right, var(--orange), #e64400);
+      color: #fff; cursor: pointer; font-weight: 700; font-size: 14px; font-family: inherit;
+      box-shadow: 0 8px 20px rgba(255,77,0,.3);
+    }
+
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+    @keyframes blink  { 0%,100% { opacity:1; } 50% { opacity:.2; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <p>Panel de Control</p>
+      <h1><span class="grad">CAMPAMENTO</span> <span>ORIGEN</span></h1>
+      <div class="sync-row">
+        <span class="sync-dot loading" id="syncDot"></span>
+        <span class="sync-label" id="syncLabel">Conectando...</span>
+        <button class="btn-refresh" onclick="fetchData()">↻ Actualizar</button>
+      </div>
+    </div>
+    <button class="btn-add" onclick="openModal()">+ Agregar manual</button>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat-card"><div class="stat-label">Total inscritos</div><div class="stat-value" id="statTotal">0</div></div>
+    <div class="stat-card"><div class="stat-label">Asisten</div><div class="stat-value" style="color:var(--green)" id="statYes">0</div></div>
+    <div class="stat-card"><div class="stat-label">No asisten</div><div class="stat-value" style="color:var(--red)" id="statNo">0</div></div>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="filters">
+    <input class="search-input" id="searchInput" placeholder="🔍  Buscar por nombre o teléfono..." oninput="renderList()" />
+    <button class="filter-btn active" data-filter="todos"    onclick="setFilter(this)">Todos</button>
+    <button class="filter-btn"        data-filter="asiste"   onclick="setFilter(this)">✓ Asisten</button>
+    <button class="filter-btn"        data-filter="no-asiste" onclick="setFilter(this)">✗ No asisten</button>
+  </div>
+
+  <!-- LIST -->
+  <div class="list" id="recordList"></div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle">Nuevo Registro</div>
+    <div class="form-group">
+      <div>
+        <label>Nombre completo</label>
+        <input id="fNombre" placeholder="Ej: María González" />
+      </div>
+      <div class="form-row">
+        <div><label>Edad</label><input id="fEdad" type="number" placeholder="16" /></div>
+        <div><label>Teléfono</label><input id="fTelefono" placeholder="8888-1234" /></div>
+      </div>
+      <div>
+        <label>¿Puede asistir?</label>
+        <div class="asiste-btns">
+          <button class="asiste-btn active-yes" id="btnSi"  onclick="setAsiste(true)">✓ Sí</button>
+          <button class="asiste-btn"            id="btnNo"  onclick="setAsiste(false)">✗ No</button>
+        </div>
+      </div>
+      <div id="razonGroup" style="display:none">
+        <label>¿Por qué no puede asistir?</label>
+        <textarea id="fRazon" placeholder="Escribe el motivo..."></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save"   onclick="saveRecord()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── CONFIG ──────────────────────────────────────────────────────────────
+  const SHEET_ID  = "2PACX-1vSWifxu3DvL2DFP8e264yF5bM2TQalFc_zzEeeRshQr-XQZd3iRTb9D1RBSKMmdeVeyoTGhr2DHUkrG";
+  const SHEET_GID = "1391417665";
+  const CSV_URL   = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?gid=${SHEET_GID}&single=true&output=csv`;
+  const PROXIES   = [
+    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+    u => `https://thingproxy.freeboard.io/fetch/${u}`,
+  ];
+  const INTERVAL  = 30000;
+
+  // ── STATE ────────────────────────────────────────────────────────────────
+  let sheetsRecords = [];
+  let manualRecords = JSON.parse(localStorage.getItem("campManual") || "[]");
+  let currentFilter = "todos";
+  let editingId     = null;
+  let asisteVal     = true;
+
+  // ── CSV PARSER ───────────────────────────────────────────────────────────
+  function parseCSVLine(line) {
+    const res = []; let cur = ""; let inQ = false;
+    for (const ch of line) {
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { res.push(cur.trim()); cur = ""; }
+      else cur += ch;
+    }
+    res.push(cur.trim());
+    return res;
+  }
+
+  function parseCSV(text) {
+    const lines = text.trim().split("\n").filter(l => l.trim());
+    if (lines.length < 2) return [];
+    return lines.slice(1).map((line, i) => {
+      const c = parseCSVLine(line);
+      const raw = (c[4] || "").toLowerCase();
+      const asiste = raw.includes("sí") || raw.includes("si") || raw === "true";
+      return { id: `s${i}`, src: "sheets", ts: c[0]||"", nombre: c[1]||"", edad: c[2]||"", telefono: c[3]||"", asiste, razon: c[5]||"" };
+    });
+  }
+
+  // ── FETCH ────────────────────────────────────────────────────────────────
+  async function fetchData() {
+    setSyncStatus("loading", "Sincronizando...");
+    for (const proxyFn of PROXIES) {
+      try {
+        const res = await fetch(proxyFn(CSV_URL));
+        if (!res.ok) continue;
+        const text = await res.text();
+        sheetsRecords = parseCSV(text);
+        const now = new Date().toLocaleTimeString("es-CR", { hour:"2-digit", minute:"2-digit" });
+        setSyncStatus("ok", `Actualizado ${now}`);
+        renderAll();
+        return;
+      } catch(e) { /* try next proxy */ }
+    }
+    setSyncStatus("error", "Error de conexión");
+  }
+
+  function setSyncStatus(state, label) {
+    const dot = document.getElementById("syncDot");
+    dot.className = "sync-dot" + (state === "loading" ? " loading" : state === "error" ? " error" : "");
+    document.getElementById("syncLabel").textContent = label;
+  }
+
+  // ── RENDER ───────────────────────────────────────────────────────────────
+  function allRecords() { return [...sheetsRecords, ...manualRecords]; }
+
+  function renderAll() {
+    const all = allRecords();
+    document.getElementById("statTotal").textContent = all.length;
+    document.getElementById("statYes").textContent   = all.filter(r => r.asiste).length;
+    document.getElementById("statNo").textContent    = all.filter(r => !r.asiste).length;
+    renderList();
+  }
+
+  function renderList() {
+    const search = document.getElementById("searchInput").value.toLowerCase();
+    const list   = document.getElementById("recordList");
+    const all    = allRecords();
+
+    const filtered = all.filter(r => {
+      const matchSearch = r.nombre.toLowerCase().includes(search) || r.telefono.includes(search);
+      const matchFilter = currentFilter === "todos" || (currentFilter === "asiste" ? r.asiste : !r.asiste);
+      return matchSearch && matchFilter;
+    });
+
+    if (filtered.length === 0) {
+      list.innerHTML = `<div class="empty">${all.length === 0 ? "Aún no hay inscripciones." : "No hay registros que coincidan."}</div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map((r, i) => `
+      <div class="record-card" style="animation-delay:${i*0.03}s">
+        <div class="record-left">
+          <div class="avatar ${r.src==='manual'?'manual':''}">${r.nombre ? r.nombre.charAt(0).toUpperCase() : "?"}</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <div class="record-name">${esc(r.nombre)}</div>
+              ${r.src==='manual' ? '<span class="manual-tag">MANUAL</span>' : ''}
+            </div>
+            <div class="record-meta">
+              ${r.edad ? r.edad+' años &nbsp;·&nbsp; ' : ''}${esc(r.telefono)}
+              ${r.ts ? `<span class="ts"> &nbsp;·&nbsp; ${esc(r.ts)}</span>` : ''}
+              ${!r.asiste && r.razon ? `<span class="reason"> &nbsp;·&nbsp; ${esc(r.razon)}</span>` : ''}
+            </div>
+          </div>
+          <span class="badge ${r.asiste?'yes':'no'}">
+            <span class="badge-dot" style="background:${r.asiste?'var(--green)':'var(--red)'}"></span>
+            ${r.asiste ? 'Asiste' : 'No asiste'}
+          </span>
+        </div>
+        <div class="record-actions">
+          ${r.src==='manual' ? `<button class="btn-edit" onclick="openModal('${r.id}')">Editar</button>` : ''}
+          <button class="btn-delete" onclick="deleteRecord('${r.id}')">Eliminar</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function esc(str) {
+    return String(str||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  // ── FILTER ───────────────────────────────────────────────────────────────
+  function setFilter(btn) {
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentFilter = btn.dataset.filter;
+    renderList();
+  }
+
+  // ── MODAL ────────────────────────────────────────────────────────────────
+  function openModal(id) {
+    editingId = id || null;
+    asisteVal = true;
+    document.getElementById("modalTitle").textContent = id ? "Editar Registro" : "Nuevo Registro";
+    if (id) {
+      const r = manualRecords.find(x => x.id === id);
+      if (r) {
+        document.getElementById("fNombre").value   = r.nombre;
+        document.getElementById("fEdad").value     = r.edad;
+        document.getElementById("fTelefono").value = r.telefono;
+        document.getElementById("fRazon").value    = r.razon || "";
+        asisteVal = r.asiste;
+      }
+    } else {
+      document.getElementById("fNombre").value   = "";
+      document.getElementById("fEdad").value     = "";
+      document.getElementById("fTelefono").value = "";
+      document.getElementById("fRazon").value    = "";
+    }
+    updateAsisteUI();
+    document.getElementById("modal").style.display = "flex";
+  }
+
+  function closeModal() { document.getElementById("modal").style.display = "none"; }
+
+  function setAsiste(val) { asisteVal = val; updateAsisteUI(); }
+
+  function updateAsisteUI() {
+    document.getElementById("btnSi").className = "asiste-btn" + (asisteVal ? " active-yes" : "");
+    document.getElementById("btnNo").className = "asiste-btn" + (!asisteVal ? " active-no"  : "");
+    document.getElementById("razonGroup").style.display = asisteVal ? "none" : "block";
+  }
+
+  function saveRecord() {
+    const nombre   = document.getElementById("fNombre").value.trim();
+    const edad     = document.getElementById("fEdad").value.trim();
+    const telefono = document.getElementById("fTelefono").value.trim();
+    const razon    = document.getElementById("fRazon").value.trim();
+    if (!nombre || !edad || !telefono) return alert("Completa nombre, edad y teléfono.");
+
+    if (editingId) {
+      manualRecords = manualRecords.map(r => r.id === editingId ? { ...r, nombre, edad, telefono, asiste: asisteVal, razon } : r);
+    } else {
+      manualRecords.push({ id: `m${Date.now()}`, src: "manual", ts: "", nombre, edad, telefono, asiste: asisteVal, razon });
+    }
+    localStorage.setItem("campManual", JSON.stringify(manualRecords));
+    closeModal();
+    renderAll();
+  }
+
+  function deleteRecord(id) {
+    if (id.startsWith("s")) {
+      alert("Los registros del formulario no se eliminan desde aquí.\nElimínalos directamente en Google Sheets.");
+      return;
+    }
+    if (!confirm("¿Eliminar este registro?")) return;
+    manualRecords = manualRecords.filter(r => r.id !== id);
+    localStorage.setItem("campManual", JSON.stringify(manualRecords));
+    renderAll();
+  }
+
+  // ── INIT ─────────────────────────────────────────────────────────────────
+  fetchData();
+  setInterval(fetchData, INTERVAL);
+  renderAll();
+</script>
+</body>
+</html>
