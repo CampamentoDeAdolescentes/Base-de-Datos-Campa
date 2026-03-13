@@ -283,7 +283,11 @@
   window.fetchSheets = async function() {
     setSyncStatus("loading","Sincronizando...");
     try {
-      const res = await fetch(CSV_URL + "&t=" + Date.now());
+      const bust = Date.now();
+      const res = await fetch(CSV_URL + "&t=" + bust, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache" }
+      });
       if (!res.ok) throw new Error("Error");
       const text = await res.text();
       sheetsRecords = parseCSV(text).filter(r => !hiddenSheets.has(r.id));
