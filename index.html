@@ -53,6 +53,9 @@
     .manual-tag { font-size:9px; padding:2px 7px; border-radius:999px; background:rgba(99,102,241,.15); color:#a5b4fc; border:1px solid rgba(165,180,252,.2); font-weight:700; letter-spacing:.1em; }
     .dup-tag { font-size:9px; padding:2px 7px; border-radius:999px; background:rgba(251,191,36,.12); color:#fbbf24; border:1px solid rgba(251,191,36,.25); font-weight:700; letter-spacing:.1em; }
     .btn-edit { padding:8px 14px; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:transparent; color:#9ca3af; cursor:pointer; font-size:12px; font-family:inherit; font-weight:600; }
+    .btn-delete { padding:8px 14px; border-radius:8px; border:1px solid rgba(248,113,113,.25); background:transparent; color:#f87171; cursor:pointer; font-size:12px; font-family:inherit; font-weight:600; }
+    .btn-delete:hover { background:rgba(248,113,113,.1); }
+    .btn-actions { display:flex; flex-direction:column; gap:6px; align-items:flex-end; }
     .empty { text-align:center; color:#6b7280; padding:60px 20px; font-size:14px; }
 
     /* Sección duplicados */
@@ -171,6 +174,7 @@
   let currentFilter = "todos";
   let editingId     = null;
   let asisteVal     = true;
+  let hiddenSheets  = new Set(JSON.parse(localStorage.getItem("hiddenSheets")||"[]"));
 
   // ── Normalización para comparar ──────────────────────────────────────────
   function normPhone(p) {
@@ -222,7 +226,19 @@
     return dups;
   }
 
-  // ── CSV parser ───────────────────────────────────────────────────────────
+  // ── Borrar / Ocultar ─────────────────────────────────────────────────────
+  window.deleteRecord = async function(id, src) {
+    if (!confirm("¿Seguro que quieres borrar este registro?")) return;
+    if (src === "manual") {
+      const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+      await deleteDoc(doc(db, "manuales", id));
+    } else {
+      hiddenSheets.add(id);
+      localStorage.setItem("hiddenSheets", JSON.stringify([...hiddenSheets]));
+      sheetsRecords = sheetsRecords.filter(r => r.id !== id);
+      renderAll();
+    }
+  };
   function parseCSVLine(line) {
     const res=[]; let cur=""; let inQ=false;
     for (const ch of line) {
@@ -250,7 +266,7 @@
       const res = await fetch(CSV_URL + "&t=" + Date.now());
       if (!res.ok) throw new Error("Error");
       const text = await res.text();
-      sheetsRecords = parseCSV(text);
+      sheetsRecords = parseCSV(text).filter(r => !hiddenSheets.has(r.id));
       const now = new Date().toLocaleTimeString("es-CR",{hour:"2-digit",minute:"2-digit"});
       setSyncStatus("ok",`Actualizado ${now}`);
       renderAll();
@@ -331,7 +347,10 @@
             ${r.asiste?"Asiste":"No asiste"}
           </span>
         </div>
-        ${r.src==="manual"?`<button class="btn-edit" onclick="openModal('${r.id}')">Editar</button>`:""}
+        <div class="btn-actions">
+          ${r.src==="manual"?`<button class="btn-edit" onclick="openModal('${r.id}')">Editar</button>`:""}
+          <button class="btn-delete" onclick="deleteRecord('${r.id}','${r.src}')">Borrar</button>
+        </div>
       </div>
     `}).join("");
   }
@@ -377,6 +396,7 @@
                 </span>
               </div>
               ${r.src==="manual"?`<button class="btn-edit" onclick="openModal('${r.id}')">Editar</button>`:""}
+              <button class="btn-delete" onclick="deleteRecord('${r.id}','${r.src}')">Borrar</button>
             </div>`;
           }).join("")}
         </div>
