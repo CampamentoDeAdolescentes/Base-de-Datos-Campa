@@ -126,6 +126,19 @@
   <div id="dupSection"></div>
 </div>
 
+<!-- MODAL CONFIRMAR BORRADO -->
+<div class="modal-overlay" id="modalConfirm" style="display:none">
+  <div class="modal-box" style="max-width:380px;">
+    <div class="modal-title" style="font-size:22px;">⚠️ Borrar registro</div>
+    <p style="color:#9ca3af;font-size:14px;line-height:1.6;margin-bottom:20px;">¿Desea borrar este registro? De ser así digite <strong style="color:#fff;">"Confirmar"</strong> en el cuadro de abajo.</p>
+    <input id="confirmInput" placeholder='Escriba "Confirmar"' style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 14px;color:#fff;font-size:14px;outline:none;font-family:inherit;" oninput="checkConfirmInput()" />
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeConfirmModal()">Cancelar</button>
+      <button class="btn-save" id="btnConfirmDelete" onclick="executeDelete()" disabled style="opacity:.4;cursor:not-allowed;background:linear-gradient(to right,#f87171,#ef4444);box-shadow:none;">Borrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL -->
 <div class="modal-overlay" id="modal" style="display:none">
   <div class="modal-box">
@@ -196,22 +209,7 @@
     updateDeleteBtn();
   };
 
-  window.deleteSelected = async function() {
-    if (!selectedIds.size) return;
-    if (!confirm(`¿Borrar ${selectedIds.size} registro(s) seleccionado(s)?`)) return;
-    const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-    const all = [...sheetsRecords, ...manualRecords];
-    for (const id of selectedIds) {
-      const r = all.find(x => x.id === id);
-      if (!r) continue;
-      if (r.src === "manual") await deleteDoc(doc(db,"manuales",id));
-      else { hiddenSheets.add(id); localStorage.setItem("hiddenSheets", JSON.stringify([...hiddenSheets])); }
-    }
-    sheetsRecords = sheetsRecords.filter(r => !hiddenSheets.has(r.id));
-    selectedIds.clear();
-    updateDeleteBtn();
-    renderAll();
-  };
+  window.deleteSelected = function() {
 
   // ── Normalización para comparar ──────────────────────────────────────────
   function normPhone(p) {
@@ -263,18 +261,57 @@
     return dups;
   }
 
-  // ── Borrar / Ocultar ─────────────────────────────────────────────────────
-  window.deleteRecord = async function(id, src) {
-    if (!confirm("¿Seguro que quieres borrar este registro?")) return;
-    if (src === "manual") {
-      const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-      await deleteDoc(doc(db, "manuales", id));
-    } else {
-      hiddenSheets.add(id);
-      localStorage.setItem("hiddenSheets", JSON.stringify([...hiddenSheets]));
-      sheetsRecords = sheetsRecords.filter(r => r.id !== id);
-      renderAll();
+  // ── Confirmar borrado ─────────────────────────────────────────────────────
+  let pendingDelete = null; // { ids: Set, src-map: Map }
+
+  window.checkConfirmInput = function() {
+    const val = document.getElementById("confirmInput").value.trim().toLowerCase();
+    const btn = document.getElementById("btnConfirmDelete");
+    if (val === "confirmar") { btn.disabled=false; btn.style.opacity="1"; btn.style.cursor="pointer"; }
+    else { btn.disabled=true; btn.style.opacity=".4"; btn.style.cursor="not-allowed"; }
+  };
+
+  window.closeConfirmModal = function() {
+    document.getElementById("modalConfirm").style.display="none";
+    document.getElementById("confirmInput").value="";
+    checkConfirmInput();
+    pendingDelete = null;
+  };
+
+  function openConfirmModal(idsAndSrcs) {
+    pendingDelete = idsAndSrcs;
+    document.getElementById("confirmInput").value="";
+    checkConfirmInput();
+    document.getElementById("modalConfirm").style.display="flex";
+  }
+
+  window.executeDelete = async function() {
+    if (!pendingDelete) return;
+    const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    for (const [id, src] of pendingDelete) {
+      if (src === "manual") await deleteDoc(doc(db,"manuales",id));
+      else { hiddenSheets.add(id); localStorage.setItem("hiddenSheets", JSON.stringify([...hiddenSheets])); }
     }
+    sheetsRecords = sheetsRecords.filter(r => !hiddenSheets.has(r.id));
+    selectedIds.clear();
+    updateDeleteBtn();
+    closeConfirmModal();
+    renderAll();
+  };
+
+  window.deleteSelected = function() {
+    if (!selectedIds.size) return;
+    const all = [...sheetsRecords, ...manualRecords];
+    const map = new Map();
+    for (const id of selectedIds) {
+      const r = all.find(x => x.id === id);
+      if (r) map.set(id, r.src);
+    }
+    openConfirmModal(map);
+  };
+
+  window.deleteRecord = function(id, src) {
+    openConfirmModal(new Map([[id, src]]));
   };
   function parseCSVLine(line) {
     const res=[]; let cur=""; let inQ=false;
