@@ -101,13 +101,7 @@
         <button class="btn-refresh" onclick="fetchSheets()">↻ Actualizar</button>
       </div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
-      <div style="display:flex;gap:10px;align-items:center;">
-        <button class="filter-btn" id="btnSelectMode" onclick="toggleSelectMode()">☑ Seleccionar</button>
-        <button class="btn-add" onclick="openModal()">+ Agregar manual</button>
-      </div>
-      <button class="btn-delete-sel" id="btnDeleteSel" onclick="deleteSelected()" style="visibility:hidden">🗑 Borrar seleccionados (<span id="selCount">0</span>)</button>
-    </div>
+    <button class="btn-add" onclick="openModal()">+ Agregar manual</button>
   </div>
 
   <div class="stats">
@@ -156,28 +150,10 @@
   </div>
 </div>
 
-<!-- MODAL CONFIRMAR BORRADO -->
-<div class="modal-overlay" id="modalConfirm" style="display:none">
-  <div class="modal-box" style="max-width:380px;">
-    <div class="modal-title" style="font-size:22px;color:#f87171;">⚠️ Borrar registro</div>
-    <p style="color:#9ca3af;font-size:14px;line-height:1.7;margin-bottom:20px;">
-      ¿Desea borrar este registro? De ser así digite <strong style="color:#fff;">"Confirmar"</strong> en el cuadro de abajo.
-    </p>
-    <input id="confirmInput" placeholder='Escriba "Confirmar"' oninput="checkConfirmInput()" />
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeConfirmModal()">Cancelar</button>
-      <button id="btnConfirmDelete" onclick="executeDelete()" disabled
-        style="flex:2;padding:12px;border-radius:10px;border:none;background:linear-gradient(to right,#f87171,#ef4444);color:#fff;cursor:not-allowed;font-weight:700;font-size:14px;font-family:inherit;opacity:.4;">
-        Borrar
-      </button>
-    </div>
-  </div>
-</div>
-
 <script type="module">
   import { initializeApp }                              from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getFirestore, collection, addDoc,
-           updateDoc, deleteDoc, doc, onSnapshot }      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+           updateDoc, doc, onSnapshot }      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey:            "AIzaSyB1bi152SLB7xENKSSc4-rrma0n5Ny2Is0",
@@ -199,25 +175,7 @@
   let currentFilter = "todos";
   let editingId     = null;
   let asisteVal     = true;
-  let hiddenSheets  = new Set(JSON.parse(localStorage.getItem("hiddenSheets") || "[]"));
-  let selectedIds   = new Set();
-  let pendingDelete = null;
-  let selectMode    = false;
-
-  window.toggleSelectMode = function() {
-    selectMode = !selectMode;
-    const btn = document.getElementById("btnSelectMode");
-    if (selectMode) {
-      btn.textContent = "✕ Cancelar";
-      btn.classList.add("active");
-    } else {
-      btn.textContent = "☑ Seleccionar";
-      btn.classList.remove("active");
-      selectedIds.clear();
-      document.getElementById("btnDeleteSel").style.visibility = "hidden";
-    }
-    renderList();
-  };
+  let hiddenSheets  = new Set();
 
   // ── Normalización ────────────────────────────────────────────────────────
   function normPhone(p) { return String(p||"").replace(/\D/g,""); }
@@ -290,7 +248,7 @@
       });
       if (!res.ok) throw new Error("Error");
       const text = await res.text();
-      sheetsRecords = parseCSV(text).filter(r => !hiddenSheets.has(r.id));
+      sheetsRecords = parseCSV(text);
       const now = new Date().toLocaleTimeString("es-CR",{hour:"2-digit",minute:"2-digit"});
       setSyncStatus("ok", `Actualizado ${now}`);
       renderAll();
@@ -343,11 +301,9 @@
     }
     list.innerHTML = filtered.map((r,i) => {
       const isDup = dupMap.has(r.id);
-      const isSel = selectedIds.has(r.id);
       return `
-        <div class="record-card${isDup?" duplicate":""}${isSel?" selected":""}" style="animation-delay:${i*.03}s">
+        <div class="record-card${isDup?" duplicate":""}" style="animation-delay:${i*.03}s">
           <div class="record-left">
-            <input type="checkbox" class="record-checkbox" ${isSel?"checked":""} onclick="toggleSelect('${r.id}',this)" style="visibility:${selectMode?'visible':'hidden'}" />
             <div class="avatar ${r.src==="manual"?"manual":""}">${r.nombre?r.nombre.charAt(0).toUpperCase():"?"}</div>
             <div style="flex:1;min-width:0">
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -407,7 +363,6 @@
                   ${r.asiste?"Asiste":"No asiste"}
                 </span>
               </div>
-              <button class="btn-delete" onclick="deleteRecord('${r.id}','${r.src}')">Borrar</button>
             </div>`;
           }).join("")}
         </div>
@@ -415,70 +370,6 @@
   }
 
   function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-
-  // ── Selección ────────────────────────────────────────────────────────────
-  window.toggleSelect = function(id, el) {
-    if (selectedIds.has(id)) { selectedIds.delete(id); el.closest(".record-card").classList.remove("selected"); }
-    else { selectedIds.add(id); el.closest(".record-card").classList.add("selected"); }
-    const btn = document.getElementById("btnDeleteSel");
-    document.getElementById("selCount").textContent = selectedIds.size;
-    btn.style.visibility = selectedIds.size > 0 ? "visible" : "hidden";
-  };
-
-  // ── Borrar ───────────────────────────────────────────────────────────────
-  window.deleteRecord = function(id, src) {
-    openConfirmModal(new Map([[id, src]]));
-  };
-
-  window.deleteSelected = function() {
-    if (!selectedIds.size) return;
-    const all = [...sheetsRecords, ...manualRecords];
-    const map = new Map();
-    for (const id of selectedIds) {
-      const r = all.find(x => x.id === id);
-      if (r) map.set(id, r.src);
-    }
-    openConfirmModal(map);
-  };
-
-  function openConfirmModal(map) {
-    pendingDelete = map;
-    document.getElementById("confirmInput").value = "";
-    checkConfirmInput();
-    document.getElementById("modalConfirm").style.display = "flex";
-  }
-
-  window.closeConfirmModal = function() {
-    document.getElementById("modalConfirm").style.display = "none";
-    document.getElementById("confirmInput").value = "";
-    pendingDelete = null;
-  };
-
-  window.checkConfirmInput = function() {
-    const val = document.getElementById("confirmInput").value.trim().toLowerCase();
-    const btn = document.getElementById("btnConfirmDelete");
-    const ok  = val === "confirmar";
-    btn.disabled      = !ok;
-    btn.style.opacity = ok ? "1" : ".4";
-    btn.style.cursor  = ok ? "pointer" : "not-allowed";
-  };
-
-  window.executeDelete = async function() {
-    if (!pendingDelete) return;
-    for (const [id, src] of pendingDelete) {
-      if (src === "manual") {
-        await deleteDoc(doc(db,"manuales",id));
-      } else {
-        hiddenSheets.add(id);
-        localStorage.setItem("hiddenSheets", JSON.stringify([...hiddenSheets]));
-      }
-    }
-    sheetsRecords = sheetsRecords.filter(r => !hiddenSheets.has(r.id));
-    selectedIds.clear();
-    document.getElementById("btnDeleteSel").style.visibility = "hidden";
-    closeConfirmModal();
-    renderAll();
-  };
 
   // ── Filtro ───────────────────────────────────────────────────────────────
   window.setFilter = function(btn) {
