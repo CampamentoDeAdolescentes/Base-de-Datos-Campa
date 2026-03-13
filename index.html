@@ -40,6 +40,7 @@
 
     .list { display:flex; flex-direction:column; gap:8px; }
     .record-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 20px; display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; animation:fadeIn .3s ease both; }
+    .record-card.duplicate { border-color:rgba(251,191,36,.25); background:rgba(251,191,36,.03); }
     .record-left { display:flex; align-items:center; gap:14px; flex-wrap:wrap; min-width:0; }
     .avatar { width:40px; height:40px; border-radius:50%; flex-shrink:0; background:linear-gradient(135deg,var(--orange),var(--yellow)); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; color:#fff; }
     .avatar.manual { background:linear-gradient(135deg,#6366f1,#8b5cf6); }
@@ -50,8 +51,18 @@
     .badge.no  { background:rgba(239,68,68,.12);  color:var(--red);   border:1px solid rgba(248,113,113,.3); }
     .badge-dot { width:6px; height:6px; border-radius:50%; }
     .manual-tag { font-size:9px; padding:2px 7px; border-radius:999px; background:rgba(99,102,241,.15); color:#a5b4fc; border:1px solid rgba(165,180,252,.2); font-weight:700; letter-spacing:.1em; }
+    .dup-tag { font-size:9px; padding:2px 7px; border-radius:999px; background:rgba(251,191,36,.12); color:#fbbf24; border:1px solid rgba(251,191,36,.25); font-weight:700; letter-spacing:.1em; }
     .btn-edit { padding:8px 14px; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:transparent; color:#9ca3af; cursor:pointer; font-size:12px; font-family:inherit; font-weight:600; }
     .empty { text-align:center; color:#6b7280; padding:60px 20px; font-size:14px; }
+
+    /* Sección duplicados */
+    .dup-section { margin-top:32px; }
+    .dup-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; padding:14px 18px; background:rgba(251,191,36,.05); border:1px solid rgba(251,191,36,.15); border-radius:14px; }
+    .dup-header-icon { font-size:18px; }
+    .dup-header-text { flex:1; }
+    .dup-header-title { font-size:13px; font-weight:700; color:#fbbf24; }
+    .dup-header-sub { font-size:11px; color:#6b7280; margin-top:2px; }
+    .dup-reason { font-size:11px; color:#fbbf24; margin-top:3px; }
 
     .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.85); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; z-index:100; padding:20px; }
     .modal-box { background:#111; border:1px solid rgba(255,255,255,.1); border-radius:20px; padding:32px; width:100%; max-width:460px; box-shadow:0 40px 80px rgba(0,0,0,.6); }
@@ -103,6 +114,7 @@
   </div>
 
   <div class="list" id="recordList"></div>
+  <div id="dupSection"></div>
 </div>
 
 <!-- MODAL -->
@@ -136,11 +148,10 @@
 
 <!-- Firebase SDK -->
 <script type="module">
-  import { initializeApp }                          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, getDocs,
-           addDoc, updateDoc, doc, onSnapshot }     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { initializeApp }                      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc,
+           updateDoc, doc, onSnapshot }         from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  // ── Firebase config ──────────────────────────────────────────────────────
   const firebaseConfig = {
     apiKey:            "AIzaSyB1bi152SLB7xENKSSc4-rrma0n5Ny2Is0",
     authDomain:        "base-de-datos-campa.firebaseapp.com",
@@ -153,15 +164,63 @@
   const app = initializeApp(firebaseConfig);
   const db  = getFirestore(app);
 
-  // ── Google Sheets CSV ────────────────────────────────────────────────────
   const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWifxu3DvL2DFP8e264yF5bM2TQalFc_zzEeeRshQr-XQZd3iRTb9D1RBSKMmdeVeyoTGhr2DHUkrG/pub?output=csv";
 
-  // ── State ────────────────────────────────────────────────────────────────
   let sheetsRecords = [];
   let manualRecords = [];
   let currentFilter = "todos";
   let editingId     = null;
   let asisteVal     = true;
+
+  // ── Normalización para comparar ──────────────────────────────────────────
+  function normPhone(p) {
+    return String(p||"").replace(/\D/g,"");
+  }
+  function normName(n) {
+    return String(n||"")
+      .toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"") // quitar tildes
+      .replace(/\s+/g," ").trim();
+  }
+  // Coincidencia de nombre: todas las palabras de A están en B o viceversa
+  function nameMatch(a, b) {
+    const na = normName(a);
+    const nb = normName(b);
+    if (na === nb) return true;
+    const wa = na.split(" ");
+    const wb = nb.split(" ");
+    // El más corto debe estar completamente contenido en el más largo
+    const [shorter, longer] = wa.length <= wb.length ? [wa, wb] : [wb, wa];
+    return shorter.every(w => longer.includes(w));
+  }
+  function phoneMatch(a, b) {
+    const pa = normPhone(a);
+    const pb = normPhone(b);
+    return pa.length >= 7 && pa === pb;
+  }
+
+  // ── Detectar duplicados ──────────────────────────────────────────────────
+  function findDuplicates(all) {
+    const dups = new Map(); // id -> { record, reasons[] }
+    for (let i = 0; i < all.length; i++) {
+      for (let j = i + 1; j < all.length; j++) {
+        const a = all[i], b = all[j];
+        const reasons = [];
+        if (phoneMatch(a.telefono, b.telefono)) reasons.push("mismo teléfono");
+        if (nameMatch(a.nombre, b.nombre))      reasons.push("nombre similar");
+        if (reasons.length > 0) {
+          [a, b].forEach(r => {
+            if (!dups.has(r.id)) dups.set(r.id, { record: r, reasons: [] });
+            reasons.forEach(rs => {
+              if (!dups.get(r.id).reasons.includes(rs))
+                dups.get(r.id).reasons.push(rs);
+            });
+          });
+        }
+      }
+    }
+    return dups;
+  }
 
   // ── CSV parser ───────────────────────────────────────────────────────────
   function parseCSVLine(line) {
@@ -200,13 +259,11 @@
     }
   };
 
-  // ── Firebase: escuchar manuales en tiempo real ───────────────────────────
   onSnapshot(collection(db,"manuales"), snapshot => {
     manualRecords = snapshot.docs.map(d => ({ id: d.id, src:"manual", ...d.data() }));
     renderAll();
   });
 
-  // ── Render ───────────────────────────────────────────────────────────────
   function setSyncStatus(state, label) {
     const dot = document.getElementById("syncDot");
     dot.className = "sync-dot" + (state==="loading"?" loading":state==="error"?" error":"");
@@ -215,15 +272,29 @@
 
   function renderAll() {
     const all = [...sheetsRecords, ...manualRecords];
-    document.getElementById("statTotal").textContent = all.length;
-    document.getElementById("statYes").textContent   = all.filter(r=>r.asiste).length;
-    document.getElementById("statNo").textContent    = all.filter(r=>!r.asiste).length;
+    // Stats sin contar duplicados doble — contamos únicos por teléfono normalizado
+    const unique = [];
+    const seenPhones = new Set();
+    const seenNames  = new Set();
+    for (const r of all) {
+      const p = normPhone(r.telefono);
+      const n = normName(r.nombre);
+      if ((p && seenPhones.has(p)) || (n && seenNames.has(n))) continue;
+      if (p) seenPhones.add(p);
+      if (n) seenNames.add(n);
+      unique.push(r);
+    }
+    document.getElementById("statTotal").textContent = unique.length;
+    document.getElementById("statYes").textContent   = unique.filter(r=>r.asiste).length;
+    document.getElementById("statNo").textContent    = unique.filter(r=>!r.asiste).length;
     renderList();
+    renderDuplicates();
   }
 
   function renderList() {
     const search = document.getElementById("searchInput").value.toLowerCase();
     const all    = [...sheetsRecords, ...manualRecords];
+    const dupMap = findDuplicates(all);
     const list   = document.getElementById("recordList");
 
     const filtered = all.filter(r => {
@@ -237,14 +308,17 @@
       return;
     }
 
-    list.innerHTML = filtered.map((r,i) => `
-      <div class="record-card" style="animation-delay:${i*.03}s">
+    list.innerHTML = filtered.map((r,i) => {
+      const isDup = dupMap.has(r.id);
+      return `
+      <div class="record-card${isDup?" duplicate":""}" style="animation-delay:${i*.03}s">
         <div class="record-left">
           <div class="avatar ${r.src==="manual"?"manual":""}">${r.nombre?r.nombre.charAt(0).toUpperCase():"?"}</div>
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <div class="record-name">${esc(r.nombre)}</div>
               ${r.src==="manual"?'<span class="manual-tag">MANUAL</span>':""}
+              ${isDup?'<span class="dup-tag">⚠ DUPLICADO</span>':""}
             </div>
             <div class="record-meta">
               ${r.edad?r.edad+" años &nbsp;·&nbsp; ":""}${esc(r.telefono)}
@@ -259,12 +333,58 @@
         </div>
         ${r.src==="manual"?`<button class="btn-edit" onclick="openModal('${r.id}')">Editar</button>`:""}
       </div>
-    `).join("");
+    `}).join("");
+  }
+
+  function renderDuplicates() {
+    const all    = [...sheetsRecords, ...manualRecords];
+    const dupMap = findDuplicates(all);
+    const section = document.getElementById("dupSection");
+
+    if (dupMap.size === 0) { section.innerHTML = ""; return; }
+
+    const items = [...dupMap.values()];
+    section.innerHTML = `
+      <div class="dup-section">
+        <div class="dup-header">
+          <span class="dup-header-icon">⚠️</span>
+          <div class="dup-header-text">
+            <div class="dup-header-title">Posibles duplicados (${items.length} registros)</div>
+            <div class="dup-header-sub">Estos registros comparten teléfono o nombre con otro. Revísalos manualmente.</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${items.map((d,i) => {
+            const r = d.record;
+            return `
+            <div class="record-card duplicate" style="animation-delay:${i*.03}s">
+              <div class="record-left">
+                <div class="avatar ${r.src==="manual"?"manual":""}">${r.nombre?r.nombre.charAt(0).toUpperCase():"?"}</div>
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <div class="record-name">${esc(r.nombre)}</div>
+                    ${r.src==="manual"?'<span class="manual-tag">MANUAL</span>':""}
+                    <span class="dup-tag">⚠ ${d.reasons.join(" · ")}</span>
+                  </div>
+                  <div class="record-meta">
+                    ${r.edad?r.edad+" años &nbsp;·&nbsp; ":""}${esc(r.telefono)}
+                    ${r.ts?`<span style="color:#4b5563"> &nbsp;·&nbsp; ${esc(r.ts)}</span>`:""}
+                  </div>
+                </div>
+                <span class="badge ${r.asiste?"yes":"no"}">
+                  <span class="badge-dot" style="background:${r.asiste?"var(--green)":"var(--red)"}"></span>
+                  ${r.asiste?"Asiste":"No asiste"}
+                </span>
+              </div>
+              ${r.src==="manual"?`<button class="btn-edit" onclick="openModal('${r.id}')">Editar</button>`:""}
+            </div>`;
+          }).join("")}
+        </div>
+      </div>`;
   }
 
   function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
-  // ── Filter ───────────────────────────────────────────────────────────────
   window.setFilter = function(btn) {
     document.querySelectorAll(".filter-btn").forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
@@ -272,7 +392,6 @@
     renderList();
   };
 
-  // ── Modal ────────────────────────────────────────────────────────────────
   window.openModal = function(id) {
     editingId = id || null;
     asisteVal = true;
@@ -294,8 +413,7 @@
   };
 
   window.closeModal = function() { document.getElementById("modal").style.display="none"; };
-
-  window.setAsiste = function(val) { asisteVal=val; updateAsisteUI(); };
+  window.setAsiste  = function(val) { asisteVal=val; updateAsisteUI(); };
 
   function updateAsisteUI() {
     document.getElementById("btnSi").className = "asiste-btn"+(asisteVal?" active-yes":"");
@@ -310,6 +428,20 @@
     const razon    = document.getElementById("fRazon").value.trim();
     if (!nombre||!edad||!telefono) return alert("Completa nombre, edad y teléfono.");
 
+    // ── Validación de duplicado antes de guardar ──────────────────────────
+    if (!editingId) {
+      const all = [...sheetsRecords, ...manualRecords];
+      const dupPorTelefono = all.find(r => phoneMatch(r.telefono, telefono));
+      const dupPorNombre   = all.find(r => nameMatch(r.nombre, nombre));
+
+      if (dupPorTelefono) {
+        return alert(`⚠️ Ya existe un registro con ese teléfono:\n"${dupPorTelefono.nombre}" (${dupPorTelefono.telefono})\n\nNo se guardó.`);
+      }
+      if (dupPorNombre) {
+        return alert(`⚠️ Ya existe un registro con un nombre similar:\n"${dupPorNombre.nombre}"\n\nNo se guardó.`);
+      }
+    }
+
     if (editingId) {
       await updateDoc(doc(db,"manuales",editingId), { nombre, edad, telefono, asiste:asisteVal, razon });
     } else {
@@ -318,7 +450,6 @@
     closeModal();
   };
 
-  // ── Init ─────────────────────────────────────────────────────────────────
   fetchSheets();
   setInterval(fetchSheets, 30000);
 </script>
