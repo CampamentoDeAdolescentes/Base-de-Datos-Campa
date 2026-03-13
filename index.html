@@ -14,7 +14,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: #fff; font-family: 'Outfit', sans-serif; min-height: 100vh; padding: 24px 20px; }
     .wrap { max-width: 900px; margin: 0 auto; }
-
+ 
     .header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
     .label-sm { font-size: 11px; font-weight: 600; letter-spacing: .2em; color: var(--orange); text-transform: uppercase; }
     h1 { font-family: 'Bangers', cursive; font-size: clamp(2rem,6vw,3.5rem); letter-spacing: 2px; line-height: 1; margin-top: 4px; }
@@ -26,21 +26,24 @@
     .sync-label { font-size:11px; color:#6b7280; }
     .btn-refresh { background:none; border:none; color:var(--orange); cursor:pointer; font-size:11px; font-weight:600; font-family:inherit; margin-left:4px; }
     .btn-add { background:linear-gradient(to right,var(--orange),#e64400); border:none; border-radius:12px; padding:12px 22px; color:#fff; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; box-shadow:0 8px 24px rgba(255,77,0,.3); white-space:nowrap; }
-
+    .btn-delete-sel { padding:10px 18px; border-radius:12px; border:1px solid rgba(248,113,113,.3); background:rgba(248,113,113,.08); color:#f87171; cursor:pointer; font-size:13px; font-family:inherit; font-weight:700; white-space:nowrap; }
+    .btn-delete-sel:hover { background:rgba(248,113,113,.15); }
+ 
     .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:24px; }
     .stat-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 20px; }
     .stat-label { font-size:10px; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.15em; }
     .stat-value { font-size:clamp(1.6rem,4vw,2.2rem); font-weight:800; line-height:1; margin-top:4px; }
-
+ 
     .filters { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
     .search-input { flex:1; min-width:200px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:10px 16px; color:#fff; font-size:14px; outline:none; font-family:inherit; }
     .search-input::placeholder { color:#4b5563; }
     .filter-btn { padding:10px 18px; border-radius:10px; border:1px solid rgba(255,255,255,.1); background:transparent; color:#9ca3af; cursor:pointer; font-weight:600; font-size:13px; font-family:inherit; }
     .filter-btn.active { border-color:var(--orange); background:rgba(255,77,0,.1); color:var(--orange); }
-
+ 
     .list { display:flex; flex-direction:column; gap:8px; }
     .record-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 20px; display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; animation:fadeIn .3s ease both; }
     .record-card.duplicate { border-color:rgba(251,191,36,.25); background:rgba(251,191,36,.03); }
+    .record-card.selected  { border-color:rgba(255,77,0,.4); background:rgba(255,77,0,.04); }
     .record-left { display:flex; align-items:center; gap:14px; flex-wrap:wrap; min-width:0; }
     .avatar { width:40px; height:40px; border-radius:50%; flex-shrink:0; background:linear-gradient(135deg,var(--orange),var(--yellow)); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; color:#fff; }
     .avatar.manual { background:linear-gradient(135deg,#6366f1,#8b5cf6); }
@@ -52,24 +55,19 @@
     .badge-dot { width:6px; height:6px; border-radius:50%; }
     .manual-tag { font-size:9px; padding:2px 7px; border-radius:999px; background:rgba(99,102,241,.15); color:#a5b4fc; border:1px solid rgba(165,180,252,.2); font-weight:700; letter-spacing:.1em; }
     .dup-tag { font-size:9px; padding:2px 7px; border-radius:999px; background:rgba(251,191,36,.12); color:#fbbf24; border:1px solid rgba(251,191,36,.25); font-weight:700; letter-spacing:.1em; }
-    .btn-edit { padding:8px 14px; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:transparent; color:#9ca3af; cursor:pointer; font-size:12px; font-family:inherit; font-weight:600; }
+    .btn-edit   { padding:8px 14px; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:transparent; color:#9ca3af; cursor:pointer; font-size:12px; font-family:inherit; font-weight:600; }
     .btn-delete { padding:8px 14px; border-radius:8px; border:1px solid rgba(248,113,113,.25); background:transparent; color:#f87171; cursor:pointer; font-size:12px; font-family:inherit; font-weight:600; }
     .btn-delete:hover { background:rgba(248,113,113,.1); }
-    .btn-delete-sel { padding:10px 18px; border-radius:12px; border:1px solid rgba(248,113,113,.3); background:rgba(248,113,113,.08); color:#f87171; cursor:pointer; font-size:13px; font-family:inherit; font-weight:700; white-space:nowrap; }
-    .btn-delete-sel:hover { background:rgba(248,113,113,.15); }
     .record-checkbox { width:18px; height:18px; accent-color:var(--orange); cursor:pointer; flex-shrink:0; }
-    .record-card.selected { border-color:rgba(255,77,0,.4); background:rgba(255,77,0,.04); }
     .empty { text-align:center; color:#6b7280; padding:60px 20px; font-size:14px; }
-
-    /* Sección duplicados */
+ 
     .dup-section { margin-top:32px; }
     .dup-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; padding:14px 18px; background:rgba(251,191,36,.05); border:1px solid rgba(251,191,36,.15); border-radius:14px; }
     .dup-header-icon { font-size:18px; }
     .dup-header-text { flex:1; }
     .dup-header-title { font-size:13px; font-weight:700; color:#fbbf24; }
-    .dup-header-sub { font-size:11px; color:#6b7280; margin-top:2px; }
-    .dup-reason { font-size:11px; color:#fbbf24; margin-top:3px; }
-
+    .dup-header-sub   { font-size:11px; color:#6b7280; margin-top:2px; }
+ 
     .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.85); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; z-index:100; padding:20px; }
     .modal-box { background:#111; border:1px solid rgba(255,255,255,.1); border-radius:20px; padding:32px; width:100%; max-width:460px; box-shadow:0 40px 80px rgba(0,0,0,.6); }
     .modal-title { font-family:'Bangers',cursive; font-size:28px; letter-spacing:2px; color:var(--orange); margin-bottom:24px; }
@@ -85,8 +83,8 @@
     .asiste-btn.active-no  { border-color:var(--red);   background:rgba(248,113,113,.1); color:var(--red); }
     .modal-actions { display:flex; gap:10px; margin-top:24px; }
     .btn-cancel { flex:1; padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,.1); background:transparent; color:#9ca3af; cursor:pointer; font-weight:600; font-family:inherit; }
-    .btn-save { flex:2; padding:12px; border-radius:10px; border:none; background:linear-gradient(to right,var(--orange),#e64400); color:#fff; cursor:pointer; font-weight:700; font-size:14px; font-family:inherit; box-shadow:0 8px 20px rgba(255,77,0,.3); }
-
+    .btn-save   { flex:2; padding:12px; border-radius:10px; border:none; background:linear-gradient(to right,var(--orange),#e64400); color:#fff; cursor:pointer; font-weight:700; font-size:14px; font-family:inherit; box-shadow:0 8px 20px rgba(255,77,0,.3); }
+ 
     @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
     @keyframes blink  { 0%,100%{ opacity:1; } 50%{ opacity:.2; } }
   </style>
@@ -108,38 +106,25 @@
       <button class="btn-add" onclick="openModal()">+ Agregar manual</button>
     </div>
   </div>
-
+ 
   <div class="stats">
     <div class="stat-card"><div class="stat-label">Total inscritos</div><div class="stat-value" id="statTotal">0</div></div>
     <div class="stat-card"><div class="stat-label">Asisten</div><div class="stat-value" style="color:var(--green)" id="statYes">0</div></div>
     <div class="stat-card"><div class="stat-label">No asisten</div><div class="stat-value" style="color:var(--red)" id="statNo">0</div></div>
   </div>
-
+ 
   <div class="filters">
     <input class="search-input" id="searchInput" placeholder="🔍  Buscar por nombre o teléfono..." oninput="renderList()" />
     <button class="filter-btn active" data-filter="todos"     onclick="setFilter(this)">Todos</button>
     <button class="filter-btn"        data-filter="asiste"    onclick="setFilter(this)">✓ Asisten</button>
     <button class="filter-btn"        data-filter="no-asiste" onclick="setFilter(this)">✗ No asisten</button>
   </div>
-
+ 
   <div class="list" id="recordList"></div>
   <div id="dupSection"></div>
 </div>
-
-<!-- MODAL CONFIRMAR BORRADO -->
-<div class="modal-overlay" id="modalConfirm" style="display:none">
-  <div class="modal-box" style="max-width:380px;">
-    <div class="modal-title" style="font-size:22px;">⚠️ Borrar registro</div>
-    <p style="color:#9ca3af;font-size:14px;line-height:1.6;margin-bottom:20px;">¿Desea borrar este registro? De ser así digite <strong style="color:#fff;">"Confirmar"</strong> en el cuadro de abajo.</p>
-    <input id="confirmInput" placeholder='Escriba "Confirmar"' style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 14px;color:#fff;font-size:14px;outline:none;font-family:inherit;" oninput="checkConfirmInput()" />
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeConfirmModal()">Cancelar</button>
-      <button class="btn-save" id="btnConfirmDelete" onclick="executeDelete()" disabled style="opacity:.4;cursor:not-allowed;background:linear-gradient(to right,#f87171,#ef4444);box-shadow:none;">Borrar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL -->
+ 
+<!-- MODAL AGREGAR/EDITAR -->
 <div class="modal-overlay" id="modal" style="display:none">
   <div class="modal-box">
     <div class="modal-title" id="modalTitle">Nuevo Registro</div>
@@ -167,13 +152,30 @@
     </div>
   </div>
 </div>
-
-<!-- Firebase SDK -->
+ 
+<!-- MODAL CONFIRMAR BORRADO -->
+<div class="modal-overlay" id="modalConfirm" style="display:none">
+  <div class="modal-box" style="max-width:380px;">
+    <div class="modal-title" style="font-size:22px;color:#f87171;">⚠️ Borrar registro</div>
+    <p style="color:#9ca3af;font-size:14px;line-height:1.7;margin-bottom:20px;">
+      ¿Desea borrar este registro? De ser así digite <strong style="color:#fff;">"Confirmar"</strong> en el cuadro de abajo.
+    </p>
+    <input id="confirmInput" placeholder='Escriba "Confirmar"' oninput="checkConfirmInput()" />
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeConfirmModal()">Cancelar</button>
+      <button id="btnConfirmDelete" onclick="executeDelete()" disabled
+        style="flex:2;padding:12px;border-radius:10px;border:none;background:linear-gradient(to right,#f87171,#ef4444);color:#fff;cursor:not-allowed;font-weight:700;font-size:14px;font-family:inherit;opacity:.4;">
+        Borrar
+      </button>
+    </div>
+  </div>
+</div>
+ 
 <script type="module">
-  import { initializeApp }                      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { initializeApp }                              from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getFirestore, collection, addDoc,
-           updateDoc, doc, onSnapshot }         from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
+           updateDoc, deleteDoc, doc, onSnapshot }      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+ 
   const firebaseConfig = {
     apiKey:            "AIzaSyB1bi152SLB7xENKSSc4-rrma0n5Ny2Is0",
     authDomain:        "base-de-datos-campa.firebaseapp.com",
@@ -182,137 +184,62 @@
     messagingSenderId: "55044154081",
     appId:             "1:55044154081:web:627dab5a33507d13b4cda0",
   };
-
+ 
   const app = initializeApp(firebaseConfig);
   const db  = getFirestore(app);
-
+ 
   const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWifxu3DvL2DFP8e264yF5bM2TQalFc_zzEeeRshQr-XQZd3iRTb9D1RBSKMmdeVeyoTGhr2DHUkrG/pub?output=csv";
-
+ 
+  // ── Estado ───────────────────────────────────────────────────────────────
   let sheetsRecords = [];
   let manualRecords = [];
   let currentFilter = "todos";
   let editingId     = null;
   let asisteVal     = true;
-  let hiddenSheets  = new Set(JSON.parse(localStorage.getItem("hiddenSheets")||"[]"));
+  let hiddenSheets  = new Set(JSON.parse(localStorage.getItem("hiddenSheets") || "[]"));
   let selectedIds   = new Set();
-
-  function updateDeleteBtn() {
-    const btn = document.getElementById("btnDeleteSel");
-    const count = document.getElementById("selCount");
-    if (selectedIds.size > 0) { btn.style.display="block"; count.textContent=selectedIds.size; }
-    else { btn.style.display="none"; }
-  }
-
-  window.toggleSelect = function(id, el) {
-    if (selectedIds.has(id)) { selectedIds.delete(id); el.closest(".record-card").classList.remove("selected"); }
-    else { selectedIds.add(id); el.closest(".record-card").classList.add("selected"); }
-    updateDeleteBtn();
-  };
-
-  window.deleteSelected = function() {
-
-  // ── Normalización para comparar ──────────────────────────────────────────
-  function normPhone(p) {
-    return String(p||"").replace(/\D/g,"");
-  }
+  let pendingDelete = null;
+ 
+  // ── Normalización ────────────────────────────────────────────────────────
+  function normPhone(p) { return String(p||"").replace(/\D/g,""); }
   function normName(n) {
-    return String(n||"")
-      .toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g,"") // quitar tildes
+    return String(n||"").toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
       .replace(/\s+/g," ").trim();
   }
-  // Coincidencia de nombre: todas las palabras de A están en B o viceversa
   function nameMatch(a, b) {
-    const na = normName(a);
-    const nb = normName(b);
+    const na = normName(a), nb = normName(b);
     if (na === nb) return true;
-    const wa = na.split(" ");
-    const wb = nb.split(" ");
-    // El más corto debe estar completamente contenido en el más largo
-    const [shorter, longer] = wa.length <= wb.length ? [wa, wb] : [wb, wa];
+    const wa = na.split(" "), wb = nb.split(" ");
+    const [shorter, longer] = wa.length <= wb.length ? [wa,wb] : [wb,wa];
     return shorter.every(w => longer.includes(w));
   }
   function phoneMatch(a, b) {
-    const pa = normPhone(a);
-    const pb = normPhone(b);
+    const pa = normPhone(a), pb = normPhone(b);
     return pa.length >= 7 && pa === pb;
   }
-
-  // ── Detectar duplicados ──────────────────────────────────────────────────
+ 
+  // ── Duplicados ───────────────────────────────────────────────────────────
   function findDuplicates(all) {
-    const dups = new Map(); // id -> { record, reasons[] }
+    const dups = new Map();
     for (let i = 0; i < all.length; i++) {
-      for (let j = i + 1; j < all.length; j++) {
+      for (let j = i+1; j < all.length; j++) {
         const a = all[i], b = all[j];
         const reasons = [];
         if (phoneMatch(a.telefono, b.telefono)) reasons.push("mismo teléfono");
         if (nameMatch(a.nombre, b.nombre))      reasons.push("nombre similar");
         if (reasons.length > 0) {
-          [a, b].forEach(r => {
-            if (!dups.has(r.id)) dups.set(r.id, { record: r, reasons: [] });
-            reasons.forEach(rs => {
-              if (!dups.get(r.id).reasons.includes(rs))
-                dups.get(r.id).reasons.push(rs);
-            });
+          [a,b].forEach(r => {
+            if (!dups.has(r.id)) dups.set(r.id, { record:r, reasons:[] });
+            reasons.forEach(rs => { if (!dups.get(r.id).reasons.includes(rs)) dups.get(r.id).reasons.push(rs); });
           });
         }
       }
     }
     return dups;
   }
-
-  // ── Confirmar borrado ─────────────────────────────────────────────────────
-  let pendingDelete = null; // { ids: Set, src-map: Map }
-
-  window.checkConfirmInput = function() {
-    const val = document.getElementById("confirmInput").value.trim().toLowerCase();
-    const btn = document.getElementById("btnConfirmDelete");
-    if (val === "confirmar") { btn.disabled=false; btn.style.opacity="1"; btn.style.cursor="pointer"; }
-    else { btn.disabled=true; btn.style.opacity=".4"; btn.style.cursor="not-allowed"; }
-  };
-
-  window.closeConfirmModal = function() {
-    document.getElementById("modalConfirm").style.display="none";
-    document.getElementById("confirmInput").value="";
-    checkConfirmInput();
-    pendingDelete = null;
-  };
-
-  function openConfirmModal(idsAndSrcs) {
-    pendingDelete = idsAndSrcs;
-    document.getElementById("confirmInput").value="";
-    checkConfirmInput();
-    document.getElementById("modalConfirm").style.display="flex";
-  }
-
-  window.executeDelete = async function() {
-    if (!pendingDelete) return;
-    const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-    for (const [id, src] of pendingDelete) {
-      if (src === "manual") await deleteDoc(doc(db,"manuales",id));
-      else { hiddenSheets.add(id); localStorage.setItem("hiddenSheets", JSON.stringify([...hiddenSheets])); }
-    }
-    sheetsRecords = sheetsRecords.filter(r => !hiddenSheets.has(r.id));
-    selectedIds.clear();
-    updateDeleteBtn();
-    closeConfirmModal();
-    renderAll();
-  };
-
-  window.deleteSelected = function() {
-    if (!selectedIds.size) return;
-    const all = [...sheetsRecords, ...manualRecords];
-    const map = new Map();
-    for (const id of selectedIds) {
-      const r = all.find(x => x.id === id);
-      if (r) map.set(id, r.src);
-    }
-    openConfirmModal(map);
-  };
-
-  window.deleteRecord = function(id, src) {
-    openConfirmModal(new Map([[id, src]]));
-  };
+ 
+  // ── CSV ──────────────────────────────────────────────────────────────────
   function parseCSVLine(line) {
     const res=[]; let cur=""; let inQ=false;
     for (const ch of line) {
@@ -332,7 +259,7 @@
       return { id:`s${i}`, src:"sheets", ts:c[0]||"", nombre:c[1]||"", edad:c[2]||"", telefono:c[3]||"", asiste, razon:c[5]||"" };
     });
   }
-
+ 
   // ── Fetch Sheets ─────────────────────────────────────────────────────────
   window.fetchSheets = async function() {
     setSyncStatus("loading","Sincronizando...");
@@ -342,37 +269,33 @@
       const text = await res.text();
       sheetsRecords = parseCSV(text).filter(r => !hiddenSheets.has(r.id));
       const now = new Date().toLocaleTimeString("es-CR",{hour:"2-digit",minute:"2-digit"});
-      setSyncStatus("ok",`Actualizado ${now}`);
+      setSyncStatus("ok", `Actualizado ${now}`);
       renderAll();
     } catch(e) {
       setSyncStatus("error","Error de conexión");
     }
   };
-
+ 
+  // ── Firebase realtime ────────────────────────────────────────────────────
   onSnapshot(collection(db,"manuales"), snapshot => {
-    manualRecords = snapshot.docs.map(d => ({ id: d.id, src:"manual", ...d.data() }));
+    manualRecords = snapshot.docs.map(d => ({ id:d.id, src:"manual", ...d.data() }));
     renderAll();
   });
-
+ 
   function setSyncStatus(state, label) {
     const dot = document.getElementById("syncDot");
     dot.className = "sync-dot" + (state==="loading"?" loading":state==="error"?" error":"");
     document.getElementById("syncLabel").textContent = label;
   }
-
+ 
+  // ── Render ───────────────────────────────────────────────────────────────
   function renderAll() {
     const all = [...sheetsRecords, ...manualRecords];
-    // Stats sin contar duplicados doble — contamos únicos por teléfono normalizado
-    const unique = [];
-    const seenPhones = new Set();
-    const seenNames  = new Set();
+    const seen = new Set(); const unique = [];
     for (const r of all) {
-      const p = normPhone(r.telefono);
-      const n = normName(r.nombre);
-      if ((p && seenPhones.has(p)) || (n && seenNames.has(n))) continue;
-      if (p) seenPhones.add(p);
-      if (n) seenNames.add(n);
-      unique.push(r);
+      const key = normPhone(r.telefono) || normName(r.nombre);
+      if (key && !seen.has(key)) { seen.add(key); unique.push(r); }
+      else if (!key) unique.push(r);
     }
     document.getElementById("statTotal").textContent = unique.length;
     document.getElementById("statYes").textContent   = unique.filter(r=>r.asiste).length;
@@ -380,61 +303,56 @@
     renderList();
     renderDuplicates();
   }
-
+ 
   function renderList() {
     const search = document.getElementById("searchInput").value.toLowerCase();
     const all    = [...sheetsRecords, ...manualRecords];
     const dupMap = findDuplicates(all);
     const list   = document.getElementById("recordList");
-
     const filtered = all.filter(r => {
       const ms = r.nombre.toLowerCase().includes(search) || r.telefono.includes(search);
       const mf = currentFilter==="todos"||(currentFilter==="asiste"?r.asiste:!r.asiste);
       return ms && mf;
     });
-
     if (!filtered.length) {
       list.innerHTML = `<div class="empty">${all.length===0?"Aún no hay inscripciones.":"No hay registros que coincidan."}</div>`;
       return;
     }
-
     list.innerHTML = filtered.map((r,i) => {
       const isDup = dupMap.has(r.id);
       const isSel = selectedIds.has(r.id);
       return `
-      <div class="record-card${isDup?" duplicate":""}${isSel?" selected":""}" style="animation-delay:${i*.03}s">
-        <div class="record-left">
-          <input type="checkbox" class="record-checkbox" ${isSel?"checked":""} onclick="toggleSelect('${r.id}',this)" />
-          <div class="avatar ${r.src==="manual"?"manual":""}">${r.nombre?r.nombre.charAt(0).toUpperCase():"?"}</div>
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <div class="record-name">${esc(r.nombre)}</div>
-              ${r.src==="manual"?'<span class="manual-tag">MANUAL</span>':""}
-              ${isDup?'<span class="dup-tag">⚠ DUPLICADO</span>':""}
+        <div class="record-card${isDup?" duplicate":""}${isSel?" selected":""}" style="animation-delay:${i*.03}s">
+          <div class="record-left">
+            <input type="checkbox" class="record-checkbox" ${isSel?"checked":""} onclick="toggleSelect('${r.id}',this)" />
+            <div class="avatar ${r.src==="manual"?"manual":""}">${r.nombre?r.nombre.charAt(0).toUpperCase():"?"}</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <div class="record-name">${esc(r.nombre)}</div>
+                ${r.src==="manual"?'<span class="manual-tag">MANUAL</span>':""}
+                ${isDup?'<span class="dup-tag">⚠ DUPLICADO</span>':""}
+              </div>
+              <div class="record-meta">
+                ${r.edad?r.edad+" años &nbsp;·&nbsp; ":""}${esc(r.telefono)}
+                ${r.ts?`<span style="color:#4b5563"> &nbsp;·&nbsp; ${esc(r.ts)}</span>`:""}
+                ${!r.asiste&&r.razon?`<span style="color:var(--red)"> &nbsp;·&nbsp; ${esc(r.razon)}</span>`:""}
+              </div>
             </div>
-            <div class="record-meta">
-              ${r.edad?r.edad+" años &nbsp;·&nbsp; ":""}${esc(r.telefono)}
-              ${r.ts?`<span style="color:#4b5563"> &nbsp;·&nbsp; ${esc(r.ts)}</span>`:""}
-              ${!r.asiste&&r.razon?`<span style="color:var(--red)"> &nbsp;·&nbsp; ${esc(r.razon)}</span>`:""}
-            </div>
+            <span class="badge ${r.asiste?"yes":"no"}">
+              <span class="badge-dot" style="background:${r.asiste?"var(--green)":"var(--red)"}"></span>
+              ${r.asiste?"Asiste":"No asiste"}
+            </span>
           </div>
-          <span class="badge ${r.asiste?"yes":"no"}">
-            <span class="badge-dot" style="background:${r.asiste?"var(--green)":"var(--red)"}"></span>
-            ${r.asiste?"Asiste":"No asiste"}
-          </span>
-        </div>
-        ${r.src==="manual"?`<button class="btn-edit" onclick="openModal('${r.id}')">Editar</button>`:""}
-      </div>
-    `}).join("");
+          ${r.src==="manual"?`<button class="btn-edit" onclick="openModal('${r.id}')">Editar</button>`:""}
+        </div>`;
+    }).join("");
   }
-
+ 
   function renderDuplicates() {
     const all    = [...sheetsRecords, ...manualRecords];
     const dupMap = findDuplicates(all);
     const section = document.getElementById("dupSection");
-
     if (dupMap.size === 0) { section.innerHTML = ""; return; }
-
     const items = [...dupMap.values()];
     section.innerHTML = `
       <div class="dup-section">
@@ -446,9 +364,7 @@
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
-          ${items.map((d,i) => {
-            const r = d.record;
-            return `
+          ${items.map((d,i) => { const r = d.record; return `
             <div class="record-card duplicate" style="animation-delay:${i*.03}s">
               <div class="record-left">
                 <div class="avatar ${r.src==="manual"?"manual":""}">${r.nombre?r.nombre.charAt(0).toUpperCase():"?"}</div>
@@ -468,23 +384,88 @@
                   ${r.asiste?"Asiste":"No asiste"}
                 </span>
               </div>
-              ${r.src==="manual"?`<button class="btn-edit" onclick="openModal('${r.id}')">Editar</button>`:""}
               <button class="btn-delete" onclick="deleteRecord('${r.id}','${r.src}')">Borrar</button>
             </div>`;
           }).join("")}
         </div>
       </div>`;
   }
-
+ 
   function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-
+ 
+  // ── Selección ────────────────────────────────────────────────────────────
+  window.toggleSelect = function(id, el) {
+    if (selectedIds.has(id)) { selectedIds.delete(id); el.closest(".record-card").classList.remove("selected"); }
+    else { selectedIds.add(id); el.closest(".record-card").classList.add("selected"); }
+    const btn = document.getElementById("btnDeleteSel");
+    document.getElementById("selCount").textContent = selectedIds.size;
+    btn.style.display = selectedIds.size > 0 ? "block" : "none";
+  };
+ 
+  // ── Borrar ───────────────────────────────────────────────────────────────
+  window.deleteRecord = function(id, src) {
+    openConfirmModal(new Map([[id, src]]));
+  };
+ 
+  window.deleteSelected = function() {
+    if (!selectedIds.size) return;
+    const all = [...sheetsRecords, ...manualRecords];
+    const map = new Map();
+    for (const id of selectedIds) {
+      const r = all.find(x => x.id === id);
+      if (r) map.set(id, r.src);
+    }
+    openConfirmModal(map);
+  };
+ 
+  function openConfirmModal(map) {
+    pendingDelete = map;
+    document.getElementById("confirmInput").value = "";
+    checkConfirmInput();
+    document.getElementById("modalConfirm").style.display = "flex";
+  }
+ 
+  window.closeConfirmModal = function() {
+    document.getElementById("modalConfirm").style.display = "none";
+    document.getElementById("confirmInput").value = "";
+    pendingDelete = null;
+  };
+ 
+  window.checkConfirmInput = function() {
+    const val = document.getElementById("confirmInput").value.trim().toLowerCase();
+    const btn = document.getElementById("btnConfirmDelete");
+    const ok  = val === "confirmar";
+    btn.disabled      = !ok;
+    btn.style.opacity = ok ? "1" : ".4";
+    btn.style.cursor  = ok ? "pointer" : "not-allowed";
+  };
+ 
+  window.executeDelete = async function() {
+    if (!pendingDelete) return;
+    for (const [id, src] of pendingDelete) {
+      if (src === "manual") {
+        await deleteDoc(doc(db,"manuales",id));
+      } else {
+        hiddenSheets.add(id);
+        localStorage.setItem("hiddenSheets", JSON.stringify([...hiddenSheets]));
+      }
+    }
+    sheetsRecords = sheetsRecords.filter(r => !hiddenSheets.has(r.id));
+    selectedIds.clear();
+    document.getElementById("btnDeleteSel").style.display = "none";
+    closeConfirmModal();
+    renderAll();
+  };
+ 
+  // ── Filtro ───────────────────────────────────────────────────────────────
   window.setFilter = function(btn) {
     document.querySelectorAll(".filter-btn").forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
     currentFilter = btn.dataset.filter;
     renderList();
   };
-
+ 
+  // ── Modal agregar/editar ─────────────────────────────────────────────────
   window.openModal = function(id) {
     editingId = id || null;
     asisteVal = true;
@@ -499,42 +480,34 @@
         asisteVal = r.asiste;
       }
     } else {
-      ["fNombre","fEdad","fTelefono","fRazon"].forEach(id=>document.getElementById(id).value="");
+      ["fNombre","fEdad","fTelefono","fRazon"].forEach(id => document.getElementById(id).value="");
     }
     updateAsisteUI();
     document.getElementById("modal").style.display = "flex";
   };
-
+ 
   window.closeModal = function() { document.getElementById("modal").style.display="none"; };
   window.setAsiste  = function(val) { asisteVal=val; updateAsisteUI(); };
-
+ 
   function updateAsisteUI() {
     document.getElementById("btnSi").className = "asiste-btn"+(asisteVal?" active-yes":"");
     document.getElementById("btnNo").className = "asiste-btn"+(!asisteVal?" active-no":"");
     document.getElementById("razonGroup").style.display = asisteVal?"none":"block";
   }
-
+ 
   window.saveRecord = async function() {
     const nombre   = document.getElementById("fNombre").value.trim();
     const edad     = document.getElementById("fEdad").value.trim();
     const telefono = document.getElementById("fTelefono").value.trim();
     const razon    = document.getElementById("fRazon").value.trim();
     if (!nombre||!edad||!telefono) return alert("Completa nombre, edad y teléfono.");
-
-    // ── Validación de duplicado antes de guardar ──────────────────────────
     if (!editingId) {
       const all = [...sheetsRecords, ...manualRecords];
-      const dupPorTelefono = all.find(r => phoneMatch(r.telefono, telefono));
-      const dupPorNombre   = all.find(r => nameMatch(r.nombre, nombre));
-
-      if (dupPorTelefono) {
-        return alert(`⚠️ Ya existe un registro con ese teléfono:\n"${dupPorTelefono.nombre}" (${dupPorTelefono.telefono})\n\nNo se guardó.`);
-      }
-      if (dupPorNombre) {
-        return alert(`⚠️ Ya existe un registro con un nombre similar:\n"${dupPorNombre.nombre}"\n\nNo se guardó.`);
-      }
+      const dupTel = all.find(r => phoneMatch(r.telefono, telefono));
+      const dupNom = all.find(r => nameMatch(r.nombre, nombre));
+      if (dupTel) return alert(`⚠️ Ya existe un registro con ese teléfono:\n"${dupTel.nombre}" (${dupTel.telefono})\n\nNo se guardó.`);
+      if (dupNom) return alert(`⚠️ Ya existe un registro con un nombre similar:\n"${dupNom.nombre}"\n\nNo se guardó.`);
     }
-
     if (editingId) {
       await updateDoc(doc(db,"manuales",editingId), { nombre, edad, telefono, asiste:asisteVal, razon });
     } else {
@@ -542,7 +515,8 @@
     }
     closeModal();
   };
-
+ 
+  // ── Init ─────────────────────────────────────────────────────────────────
   fetchSheets();
   setInterval(fetchSheets, 30000);
 </script>
