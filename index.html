@@ -101,10 +101,12 @@
         <button class="btn-refresh" onclick="fetchSheets()">↻ Actualizar</button>
       </div>
     </div>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button class="filter-btn" id="btnSelectMode" onclick="toggleSelectMode()">☑ Seleccionar</button>
+        <button class="btn-add" onclick="openModal()">+ Agregar manual</button>
+      </div>
       <button class="btn-delete-sel" id="btnDeleteSel" onclick="deleteSelected()" style="visibility:hidden">🗑 Borrar seleccionados (<span id="selCount">0</span>)</button>
-      <button class="filter-btn" id="btnSelectMode" onclick="toggleSelectMode()">☑ Seleccionar</button>
-      <button class="btn-add" onclick="openModal()">+ Agregar manual</button>
     </div>
   </div>
 
