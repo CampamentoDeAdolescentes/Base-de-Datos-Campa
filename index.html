@@ -55,7 +55,10 @@
     .btn-edit { padding:8px 14px; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:transparent; color:#9ca3af; cursor:pointer; font-size:12px; font-family:inherit; font-weight:600; }
     .btn-delete { padding:8px 14px; border-radius:8px; border:1px solid rgba(248,113,113,.25); background:transparent; color:#f87171; cursor:pointer; font-size:12px; font-family:inherit; font-weight:600; }
     .btn-delete:hover { background:rgba(248,113,113,.1); }
-    .btn-actions { display:flex; flex-direction:column; gap:6px; align-items:flex-end; }
+    .btn-delete-sel { padding:10px 18px; border-radius:12px; border:1px solid rgba(248,113,113,.3); background:rgba(248,113,113,.08); color:#f87171; cursor:pointer; font-size:13px; font-family:inherit; font-weight:700; white-space:nowrap; }
+    .btn-delete-sel:hover { background:rgba(248,113,113,.15); }
+    .record-checkbox { width:18px; height:18px; accent-color:var(--orange); cursor:pointer; flex-shrink:0; }
+    .record-card.selected { border-color:rgba(255,77,0,.4); background:rgba(255,77,0,.04); }
     .empty { text-align:center; color:#6b7280; padding:60px 20px; font-size:14px; }
 
     /* Sección duplicados */
@@ -100,7 +103,10 @@
         <button class="btn-refresh" onclick="fetchSheets()">↻ Actualizar</button>
       </div>
     </div>
-    <button class="btn-add" onclick="openModal()">+ Agregar manual</button>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button class="btn-delete-sel" id="btnDeleteSel" onclick="deleteSelected()" style="display:none">🗑 Borrar seleccionados (<span id="selCount">0</span>)</button>
+      <button class="btn-add" onclick="openModal()">+ Agregar manual</button>
+    </div>
   </div>
 
   <div class="stats">
@@ -175,6 +181,37 @@
   let editingId     = null;
   let asisteVal     = true;
   let hiddenSheets  = new Set(JSON.parse(localStorage.getItem("hiddenSheets")||"[]"));
+  let selectedIds   = new Set();
+
+  function updateDeleteBtn() {
+    const btn = document.getElementById("btnDeleteSel");
+    const count = document.getElementById("selCount");
+    if (selectedIds.size > 0) { btn.style.display="block"; count.textContent=selectedIds.size; }
+    else { btn.style.display="none"; }
+  }
+
+  window.toggleSelect = function(id, el) {
+    if (selectedIds.has(id)) { selectedIds.delete(id); el.closest(".record-card").classList.remove("selected"); }
+    else { selectedIds.add(id); el.closest(".record-card").classList.add("selected"); }
+    updateDeleteBtn();
+  };
+
+  window.deleteSelected = async function() {
+    if (!selectedIds.size) return;
+    if (!confirm(`¿Borrar ${selectedIds.size} registro(s) seleccionado(s)?`)) return;
+    const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const all = [...sheetsRecords, ...manualRecords];
+    for (const id of selectedIds) {
+      const r = all.find(x => x.id === id);
+      if (!r) continue;
+      if (r.src === "manual") await deleteDoc(doc(db,"manuales",id));
+      else { hiddenSheets.add(id); localStorage.setItem("hiddenSheets", JSON.stringify([...hiddenSheets])); }
+    }
+    sheetsRecords = sheetsRecords.filter(r => !hiddenSheets.has(r.id));
+    selectedIds.clear();
+    updateDeleteBtn();
+    renderAll();
+  };
 
   // ── Normalización para comparar ──────────────────────────────────────────
   function normPhone(p) {
@@ -326,9 +363,11 @@
 
     list.innerHTML = filtered.map((r,i) => {
       const isDup = dupMap.has(r.id);
+      const isSel = selectedIds.has(r.id);
       return `
-      <div class="record-card${isDup?" duplicate":""}" style="animation-delay:${i*.03}s">
+      <div class="record-card${isDup?" duplicate":""}${isSel?" selected":""}" style="animation-delay:${i*.03}s">
         <div class="record-left">
+          <input type="checkbox" class="record-checkbox" ${isSel?"checked":""} onclick="toggleSelect('${r.id}',this)" />
           <div class="avatar ${r.src==="manual"?"manual":""}">${r.nombre?r.nombre.charAt(0).toUpperCase():"?"}</div>
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -347,10 +386,7 @@
             ${r.asiste?"Asiste":"No asiste"}
           </span>
         </div>
-        <div class="btn-actions">
-          ${r.src==="manual"?`<button class="btn-edit" onclick="openModal('${r.id}')">Editar</button>`:""}
-          <button class="btn-delete" onclick="deleteRecord('${r.id}','${r.src}')">Borrar</button>
-        </div>
+        ${r.src==="manual"?`<button class="btn-edit" onclick="openModal('${r.id}')">Editar</button>`:""}
       </div>
     `}).join("");
   }
