@@ -101,8 +101,8 @@
         <button class="btn-refresh" onclick="fetchSheets()">↻ Actualizar</button>
       </div>
     </div>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-      <button class="btn-delete-sel" id="btnDeleteSel" onclick="deleteSelected()" style="display:none">🗑 Borrar seleccionados (<span id="selCount">0</span>)</button>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+      <button class="btn-delete-sel" id="btnDeleteSel" onclick="deleteSelected()" style="visibility:hidden">🗑 Borrar seleccionados (<span id="selCount">0</span>)</button>
       <button class="filter-btn" id="btnSelectMode" onclick="toggleSelectMode()">☑ Seleccionar</button>
       <button class="btn-add" onclick="openModal()">+ Agregar manual</button>
     </div>
@@ -212,7 +212,7 @@
       btn.textContent = "☑ Seleccionar";
       btn.classList.remove("active");
       selectedIds.clear();
-      document.getElementById("btnDeleteSel").style.display = "none";
+      document.getElementById("btnDeleteSel").style.visibility = "hidden";
     }
     renderList();
   };
@@ -341,7 +341,7 @@
       return `
         <div class="record-card${isDup?" duplicate":""}${isSel?" selected":""}" style="animation-delay:${i*.03}s">
           <div class="record-left">
-            <input type="checkbox" class="record-checkbox" ${isSel?"checked":""} onclick="toggleSelect('${r.id}',this)" style="display:${selectMode?'block':'none'}" />
+            <input type="checkbox" class="record-checkbox" ${isSel?"checked":""} onclick="toggleSelect('${r.id}',this)" style="visibility:${selectMode?'visible':'hidden'}" />
             <div class="avatar ${r.src==="manual"?"manual":""}">${r.nombre?r.nombre.charAt(0).toUpperCase():"?"}</div>
             <div style="flex:1;min-width:0">
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -416,7 +416,7 @@
     else { selectedIds.add(id); el.closest(".record-card").classList.add("selected"); }
     const btn = document.getElementById("btnDeleteSel");
     document.getElementById("selCount").textContent = selectedIds.size;
-    btn.style.display = selectedIds.size > 0 ? "block" : "none";
+    btn.style.visibility = selectedIds.size > 0 ? "visible" : "hidden";
   };
 
   // ── Borrar ───────────────────────────────────────────────────────────────
@@ -469,7 +469,7 @@
     }
     sheetsRecords = sheetsRecords.filter(r => !hiddenSheets.has(r.id));
     selectedIds.clear();
-    document.getElementById("btnDeleteSel").style.display = "none";
+    document.getElementById("btnDeleteSel").style.visibility = "hidden";
     closeConfirmModal();
     renderAll();
   };
